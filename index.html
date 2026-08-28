@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anonymous Group</title>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- CSS Lokal -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+    <!-- ==================== LOGIN/SIGNUP PAGE ==================== -->
+    <div class="container" id="authPage">
+        <div class="logo">
+            <h2>
+                <i class="fas fa-users"></i>
+                Anonymous group
+            </h2>
+            <p id="logoText">Masuk untuk bergabung dengan grup</p>
+        </div>
+
+        <div id="successMessage" class="success-message"></div>
+
+        <div class="tabs">
+            <button class="tab active" id="tabLogin" onclick="switchTab('login')">Login</button>
+            <button class="tab" id="tabSignup" onclick="switchTab('signup')">Sign Up</button>
+        </div>
+
+        <!-- Login Form -->
+        <div id="loginForm">
+            <div class="form-group">
+                <label>Username</label>
+                <div class="input-wrapper">
+                    <input type="text" id="loginUsername" placeholder="Masukkan username" oninput="checkLoginForm()">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <div class="input-wrapper">
+                    <input type="password" id="loginPassword" placeholder="Masukkan password" oninput="checkLoginForm()">
+                    <button type="button" class="toggle-password" onclick="togglePassword('loginPassword', this)">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="humanCheck" onchange="checkLoginForm()">
+                <label for="humanCheck">Apa kamu manusia?</label>
+            </div>
+            <button class="btn-primary" id="loginBtn" onclick="handleLogin()" disabled>Masuk</button>
+            
+            <div class="divider">Atau masuk dengan</div>
+            
+            <div class="social-buttons">
+                <button class="btn-social google" onclick="loginWithGoogle()">
+                    <i class="fab fa-google"></i> Google
+                </button>
+                <button class="btn-social github" onclick="loginWithGitHub()">
+                    <i class="fab fa-github"></i> GitHub
+                </button>
+            </div>
+            
+            <div class="form-footer">
+                Belum punya akun? <a onclick="switchTab('signup')">Daftar sekarang</a>
+            </div>
+        </div>
+
+        <!-- Sign Up Form -->
+        <div id="signupForm" class="hidden">
+            <div class="form-group">
+                <label>Nama Lengkap</label>
+                <div class="input-wrapper">
+                    <input type="text" id="signupName" placeholder="Nama lengkap" oninput="checkSignupForm()">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Username</label>
+                <div class="input-wrapper">
+                    <input type="text" id="signupUsername" placeholder="Buat username" oninput="checkSignupForm()">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Kata Sandi</label>
+                <div class="input-wrapper">
+                    <input type="password" id="signupPassword" placeholder="Minimal 6 karakter" oninput="checkSignupForm()">
+                    <button type="button" class="toggle-password" onclick="togglePassword('signupPassword', this)">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Ulangi Kata Sandi</label>
+                <div class="input-wrapper">
+                    <input type="password" id="signupConfirmPassword" placeholder="Ulangi kata sandi" oninput="checkSignupForm()">
+                    <button type="button" class="toggle-password" onclick="togglePassword('signupConfirmPassword', this)">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="agreeTerms" onchange="checkSignupForm()">
+                <label for="agreeTerms">Saya setuju dengan <a href="#" onclick="openTerms(event)">Syarat & Ketentuan</a></label>
+            </div>
+            <button class="btn-primary" id="signupBtn" onclick="handleSignup()" disabled>Daftar</button>
+            
+            <div class="form-footer">
+                Sudah punya akun? <a onclick="switchTab('login')">Masuk sekarang</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== DASHBOARD USER PAGE ==================== -->
+    <div class="dashboard-user-page" id="dashboardUserPage">
+        <div class="dashboard-header">
+            <div class="dashboard-header-left">
+                <i class="fas fa-users"></i>
+                <span>Anonymous Group</span>
+            </div>
+            <div class="dashboard-header-right">
+                <div class="online-dot" id="onlineDotUser"></div>
+                <span id="onlineCountUser">0 Online</span>
+            </div>
+        </div>
+        <div class="chat-area" id="chatAreaUser"></div>
+        <div class="message-input-area">
+            <button class="icon-btn" onclick="document.getElementById('docInputUser').click()" title="Kirim Dokumen">
+                <i class="fas fa-paperclip"></i>
+            </button>
+            <input type="file" id="docInputUser" accept=".pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx,.zip,.rar" onchange="handleFileUpload(this, 'document', 'User')">
+            <input type="text" id="messageInputUser" placeholder="Ketik pesan..." onkeypress="if(event.key === 'Enter') sendMessage('User')">
+            <button class="send-btn" onclick="sendMessage('User')">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== DASHBOARD ADMIN PAGE ==================== -->
+    <div class="dashboard-admin-page" id="dashboardAdminPage">
+        <div class="dashboard-left-area">
+            <div class="admin-header">
+                <i class="fas fa-shield-alt"></i>
+                <span>Admin panel</span>
+            </div>
+            <div class="admin-content">
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th>Nama</th>
+                            <th>Username</th>
+                            <th>Password</th>
+                            <th>Gmail</th>
+                            <th>Facebook</th>
+                            <th>Status</th>
+                            <th>Kick</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="dashboard-mobile-area">
+            <div class="dashboard-header">
+                <div class="dashboard-header-left">
+                    <i class="fas fa-users"></i>
+                    <span>Anonymous Group</span>
+                </div>
+                <div class="dashboard-header-right">
+                    <div class="online-dot" id="onlineDotAdmin"></div>
+                    <span id="onlineCountAdmin">0 Online</span>
+                </div>
+            </div>
+            <div class="chat-area" id="chatAreaAdmin"></div>
+            <div class="message-input-area">
+                <button class="icon-btn" onclick="document.getElementById('docInputAdmin').click()" title="Kirim Dokumen">
+                    <i class="fas fa-paperclip"></i>
+                </button>
+                <input type="file" id="docInputAdmin" accept=".pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx,.zip,.rar" onchange="handleFileUpload(this, 'document', 'Admin')">
+                <input type="text" id="messageInputAdmin" placeholder="Ketik pesan..." onkeypress="if(event.key === 'Enter') sendMessage('Admin')">
+                <button class="send-btn" onclick="sendMessage('Admin')">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SCRIPTS ==================== -->
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
