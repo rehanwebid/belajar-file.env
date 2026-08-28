@@ -346,6 +346,128 @@ body::-webkit-scrollbar {
     display: block;
 }
 
+/* ==================== HALAMAN SYARAT & KETENTUAN ==================== */
+.terms-page {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #0a0a0a;
+    z-index: 3000;
+    overflow-y: auto;
+    padding: 40px 20px;
+    display: none;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.terms-page::-webkit-scrollbar {
+    display: none;
+}
+
+.terms-page.active {
+    display: block;
+}
+
+.terms-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #2a2a2a;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.terms-header h2 {
+    color: #ccff00;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    white-space: nowrap;
+}
+
+.terms-close {
+    background: none;
+    border: none;
+    color: #666666;
+    font-size: 24px;
+    cursor: pointer;
+    transition: color 0.3s ease;
+    padding: 8px;
+}
+
+.terms-close:hover {
+    color: #ccff00;
+}
+
+.terms-content {
+    color: #cccccc;
+    font-size: 14px;
+    line-height: 1.8;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.terms-content h3 {
+    color: #ffffff;
+    font-size: 16px;
+    margin-bottom: 12px;
+    margin-top: 32px;
+}
+
+.terms-content h3:first-child {
+    margin-top: 0;
+}
+
+.terms-content p {
+    margin-bottom: 12px;
+}
+
+.terms-content ul {
+    list-style-type: none;
+    padding-left: 20px;
+    margin-bottom: 12px;
+}
+
+.terms-content ul li {
+    margin-bottom: 8px;
+    position: relative;
+}
+
+.terms-content ul li::before {
+    content: '•';
+    color: #ccff00;
+    position: absolute;
+    left: -15px;
+}
+
+.terms-accept-btn {
+    width: 100%;
+    max-width: 800px;
+    padding: 14px;
+    background: #ccff00;
+    color: #000000;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 32px;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.terms-accept-btn:hover {
+    background: #d9ff33;
+}
+
 /* ==================== DASHBOARD (USER VIEW) ==================== */
 .dashboard-user-page {
     position: fixed;
