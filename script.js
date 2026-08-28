@@ -121,7 +121,6 @@ function handleLogin() {
             role: 'admin'
         };
         currentRole = 'admin';
-        saveSession(currentUser, 'admin');
         showAdminDashboard();
         return;
     }
@@ -132,7 +131,6 @@ function handleLogin() {
             if (response.success) {
                 currentUser = response.user;
                 currentRole = 'user';
-                saveSession(response.user, 'user');
                 showUserDashboard();
             } else {
                 showMessage(response.message);
@@ -189,7 +187,6 @@ function loginWithGoogle() {
                 if (response.success) {
                     currentUser = response.user;
                     currentRole = 'user';
-                    saveSession(response.user, 'user');
                     showUserDashboard();
                 } else {
                     showMessage(response.message);
@@ -220,7 +217,6 @@ function loginWithGitHub() {
                 if (response.success) {
                     currentUser = response.user;
                     currentRole = 'user';
-                    saveSession(response.user, 'user');
                     showUserDashboard();
                 } else {
                     showMessage(response.message);
@@ -230,35 +226,6 @@ function loginWithGitHub() {
         .catch(function(error) {
             showMessage('Error: ' + error.message);
         });
-}
-
-// ==================== SESSION MANAGEMENT ====================
-function saveSession(user, role) {
-    localStorage.setItem('anonymousGroupUser', JSON.stringify(user));
-    localStorage.setItem('anonymousGroupRole', role);
-}
-
-function loadSession() {
-    const savedUser = localStorage.getItem('anonymousGroupUser');
-    const savedRole = localStorage.getItem('anonymousGroupRole');
-    
-    if (savedUser && savedRole) {
-        currentUser = JSON.parse(savedUser);
-        currentRole = savedRole;
-        
-        if (currentRole === 'admin') {
-            showAdminDashboard();
-        } else {
-            showUserDashboard();
-        }
-    }
-}
-
-function logout() {
-    localStorage.removeItem('anonymousGroupUser');
-    localStorage.removeItem('anonymousGroupRole');
-    firebase.auth().signOut();
-    location.reload();
 }
 
 // ==================== DASHBOARD VIEWS ====================
@@ -275,6 +242,24 @@ function showAdminDashboard() {
     loadMessages('Admin');
     loadUsers();
     loadOnlineStatus();
+}
+
+// ==================== LOGOUT ====================
+function logout() {
+    currentUser = null;
+    currentRole = null;
+    lastMessageId = null;
+    
+    firebase.auth().signOut().catch(function() {});
+    
+    document.getElementById('dashboardUserPage').classList.remove('active');
+    document.getElementById('dashboardAdminPage').classList.remove('active');
+    document.getElementById('authPage').classList.remove('hidden');
+    
+    document.getElementById('loginUsername').value = '';
+    document.getElementById('loginPassword').value = '';
+    document.getElementById('humanCheck').checked = false;
+    checkLoginForm();
 }
 
 // ==================== CHAT ====================
@@ -501,6 +486,8 @@ function openTerms(event) {
 }
 
 // ==================== INIT ====================
+// TIDAK ADA loadSession() - Setiap buka halaman selalu tampil login
 document.addEventListener('DOMContentLoaded', function() {
-    loadSession();
+    checkLoginForm();
+    checkSignupForm();
 });
