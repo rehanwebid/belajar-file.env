@@ -3,9 +3,34 @@ firebase.initializeApp(window.APP_CONFIG.firebase);
 
 // ==================== GLOBAL STATE ====================
 let currentUser = null;
-let currentRole = null; // 'admin' atau 'user'
+let currentRole = null;
 let lastMessageId = null;
 let onlineCount = 0;
+
+// ==================== API HELPER ====================
+function callAppsScript(functionName, params = {}) {
+    const url = window.APP_CONFIG.appsScriptUrl;
+    
+    const formData = new URLSearchParams();
+    formData.append('action', functionName);
+    
+    for (const key in params) {
+        formData.append(key, params[key]);
+    }
+    
+    return fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData.toString()
+    })
+    .then(response => response.json())
+    .catch(error => {
+        console.error('API Error:', error);
+        return { success: false, message: error.message };
+    });
+}
 
 // ==================== TAB SWITCHING ====================
 function switchTab(tab) {
@@ -89,28 +114,30 @@ function handleLogin() {
     
     // Cek admin login
     if (username === window.APP_CONFIG.admin.username && password === window.APP_CONFIG.admin.password) {
-        currentUser = { username: username, nama: 'Administrator' };
+        currentUser = { 
+            userId: 'admin_001', 
+            username: username, 
+            nama: 'Administrator',
+            role: 'admin'
+        };
         currentRole = 'admin';
+        saveSession(currentUser, 'admin');
         showAdminDashboard();
         return;
     }
     
-    // Login user biasa via Apps Script
-    google.script.run
-        .withSuccessHandler(function(response) {
+    // Login user biasa via Apps Script API
+    callAppsScript('loginUser', { username: username, password: password })
+        .then(function(response) {
             if (response.success) {
                 currentUser = response.user;
                 currentRole = 'user';
-                saveSession(response.user);
+                saveSession(response.user, 'user');
                 showUserDashboard();
             } else {
                 showMessage(response.message);
             }
-        })
-        .withFailureHandler(function(error) {
-            showMessage('Error: ' + error.message);
-        })
-        .loginUser(username, password);
+        });
 }
 
 // ==================== SIGNUP ====================
@@ -119,25 +146,28 @@ function handleSignup() {
     const username = document.getElementById('signupUsername').value.trim();
     const password = document.getElementById('signupPassword').value.trim();
     
-    google.script.run
-        .withSuccessHandler(function(response) {
-            if (response.success) {
-                showMessage('✓ Registrasi berhasil! Silakan login.');
-                switchTab('login');
-                document.getElementById('loginUsername').value = username;
-                document.getElementById('signupName').value = '';
-                document.getElementById('signupUsername').value = '';
-                document.getElementById('signupPassword').value = '';
-                document.getElementById('signupConfirmPassword').value = '';
-                document.getElementById('agreeTerms').checked = false;
-            } else {
-                showMessage(response.message);
-            }
-        })
-        .withFailureHandler(function(error) {
-            showMessage('Error: ' + error.message);
-        })
-        .registerUser(nama, username, password, '-', '-');
+    callAppsScript('registerUser', {
+        nama: nama,
+        username: username,
+        password: password,
+        gmail: '-',
+        facebook: '-'
+    })
+    .then(function(response) {
+        if (response.success) {
+            showMessage('✓ Registrasi berhasil! Silakan login.');
+            switchTab('login');
+            document.getElementById('loginUsername').value = username;
+            document.getElementById('signupName').value = '';
+            document.getElementById('signupUsername').value = '';
+            document.getElementById('signupPassword').value = '';
+            document.getElementById('signupConfirmPassword').value = '';
+            document.getElementById('agreeTerms').checked = false;
+            checkLoginForm();
+        } else {
+            showMessage(response.message);
+        }
+    });
 }
 
 // ==================== GOOGLE LOGIN ====================
@@ -147,20 +177,24 @@ function loginWithGoogle() {
     firebase.auth().signInWithPopup(provider)
         .then(function(result) {
             const user = result.user;
-            const email = user.email;
+            const email = user.email || '-';
             const displayName = user.displayName || email.split('@')[0];
             
-            // Simpan ke Apps Script
-            google.script.run
-                .withSuccessHandler(function(response) {
-                    if (response.success) {
-                        currentUser = response.user;
-                        currentRole = 'user';
-                        saveSession(response.user);
-                        showUserDashboard();
-                    }
-                })
-                .loginWithProvider('google', email, displayName);
+            callAppsScript('loginWithProvider', {
+                provider: 'google',
+                email: email,
+                displayName: displayName
+            })
+            .then(function(response) {
+                if (response.success) {
+                    currentUser = response.user;
+                    currentRole = 'user';
+                    saveSession(response.user, 'user');
+                    showUserDashboard();
+                } else {
+                    showMessage(response.message);
+                }
+            });
         })
         .catch(function(error) {
             showMessage('Error: ' + error.message);
@@ -174,19 +208,24 @@ function loginWithGitHub() {
     firebase.auth().signInWithPopup(provider)
         .then(function(result) {
             const user = result.user;
-            const email = user.email || user.providerData[0].email || '-';
-            const displayName = user.displayName || user.providerData[0].displayName || 'GitHub User';
+            const email = user.email || '-';
+            const displayName = user.displayName || email.split('@')[0];
             
-            google.script.run
-                .withSuccessHandler(function(response) {
-                    if (response.success) {
-                        currentUser = response.user;
-                        currentRole = 'user';
-                        saveSession(response.user);
-                        showUserDashboard();
-                    }
-                })
-                .loginWithProvider('github', email, displayName);
+            callAppsScript('loginWithProvider', {
+                provider: 'github',
+                email: email,
+                displayName: displayName
+            })
+            .then(function(response) {
+                if (response.success) {
+                    currentUser = response.user;
+                    currentRole = 'user';
+                    saveSession(response.user, 'user');
+                    showUserDashboard();
+                } else {
+                    showMessage(response.message);
+                }
+            });
         })
         .catch(function(error) {
             showMessage('Error: ' + error.message);
@@ -194,9 +233,9 @@ function loginWithGitHub() {
 }
 
 // ==================== SESSION MANAGEMENT ====================
-function saveSession(user) {
+function saveSession(user, role) {
     localStorage.setItem('anonymousGroupUser', JSON.stringify(user));
-    localStorage.setItem('anonymousGroupRole', currentRole);
+    localStorage.setItem('anonymousGroupRole', role);
 }
 
 function loadSession() {
@@ -215,12 +254,19 @@ function loadSession() {
     }
 }
 
+function logout() {
+    localStorage.removeItem('anonymousGroupUser');
+    localStorage.removeItem('anonymousGroupRole');
+    firebase.auth().signOut();
+    location.reload();
+}
+
 // ==================== DASHBOARD VIEWS ====================
 function showUserDashboard() {
     document.getElementById('authPage').classList.add('hidden');
     document.getElementById('dashboardUserPage').classList.add('active');
     loadMessages('User');
-    loadOnlineStatus('User');
+    loadOnlineStatus();
 }
 
 function showAdminDashboard() {
@@ -228,13 +274,12 @@ function showAdminDashboard() {
     document.getElementById('dashboardAdminPage').classList.add('active');
     loadMessages('Admin');
     loadUsers();
-    loadOnlineStatus('Admin');
+    loadOnlineStatus();
 }
 
 // ==================== CHAT ====================
 function sendMessage(view) {
     const inputId = view === 'Admin' ? 'messageInputAdmin' : 'messageInputUser';
-    const chatAreaId = view === 'Admin' ? 'chatAreaAdmin' : 'chatAreaUser';
     const input = document.getElementById(inputId);
     const message = input.value.trim();
     
@@ -242,15 +287,23 @@ function sendMessage(view) {
         const senderName = currentUser.nama || currentUser.username;
         const senderUsername = currentUser.username;
         
-        google.script.run
-            .withSuccessHandler(function(response) {
-                if (response.success) {
-                    input.value = '';
-                    loadMessages(view);
-                    if (view === 'Admin') loadUsers();
+        callAppsScript('sendMessage', {
+            senderName: senderName,
+            senderUsername: senderUsername,
+            message: message,
+            type: 'text',
+            fileUrl: '-'
+        })
+        .then(function(response) {
+            if (response.success) {
+                input.value = '';
+                loadMessages(view);
+                if (view === 'Admin') {
+                    loadUsers();
                 }
-            })
-            .sendMessage(senderName, senderUsername, message, 'text', '-');
+                loadOnlineStatus();
+            }
+        });
     }
 }
 
@@ -258,8 +311,8 @@ function loadMessages(view) {
     const chatAreaId = view === 'Admin' ? 'chatAreaAdmin' : 'chatAreaUser';
     const chatArea = document.getElementById(chatAreaId);
     
-    google.script.run
-        .withSuccessHandler(function(response) {
+    callAppsScript('getMessages', { lastId: lastMessageId || '' })
+        .then(function(response) {
             if (response.success) {
                 chatArea.innerHTML = '';
                 const messages = response.messages;
@@ -282,16 +335,21 @@ function loadMessages(view) {
                     const timeSpan = document.createElement('span');
                     timeSpan.className = 'chat-time';
                     const date = new Date(msg.timestamp);
-                    timeSpan.textContent = date.getHours() + ':' + String(date.getMinutes()).padStart(2, '0');
+                    const hours = String(date.getHours()).padStart(2, '0');
+                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    timeSpan.textContent = hours + ':' + minutes;
                     div.appendChild(timeSpan);
                     
                     chatArea.appendChild(div);
                 }
                 
                 chatArea.scrollTop = chatArea.scrollHeight;
+                
+                if (messages.length > 0) {
+                    lastMessageId = messages[messages.length - 1].messageId;
+                }
             }
-        })
-        .getMessages(lastMessageId);
+        });
 }
 
 // ==================== FILE UPLOAD ====================
@@ -304,21 +362,32 @@ function handleFileUpload(input, type, view) {
             const fileName = file.name;
             const mimeType = file.type;
             
-            google.script.run
-                .withSuccessHandler(function(response) {
-                    if (response.success) {
-                        const senderName = currentUser.nama || currentUser.username;
-                        const senderUsername = currentUser.username;
-                        
-                        google.script.run
-                            .withSuccessHandler(function(msgResponse) {
-                                loadMessages(view);
-                                if (view === 'Admin') loadUsers();
-                            })
-                            .sendMessage(senderName, senderUsername, '📄 ' + fileName, 'document', response.fileUrl);
-                    }
-                })
-                .uploadFileToDrive(base64Data, fileName, mimeType);
+            callAppsScript('uploadFileToDrive', {
+                base64Data: base64Data,
+                fileName: fileName,
+                mimeType: mimeType
+            })
+            .then(function(response) {
+                if (response.success) {
+                    const senderName = currentUser.nama || currentUser.username;
+                    const senderUsername = currentUser.username;
+                    
+                    callAppsScript('sendMessage', {
+                        senderName: senderName,
+                        senderUsername: senderUsername,
+                        message: '📄 ' + fileName,
+                        type: 'document',
+                        fileUrl: response.fileUrl
+                    })
+                    .then(function() {
+                        loadMessages(view);
+                        if (view === 'Admin') {
+                            loadUsers();
+                        }
+                        loadOnlineStatus();
+                    });
+                }
+            });
         };
         reader.readAsDataURL(file);
         input.value = '';
@@ -329,8 +398,8 @@ function handleFileUpload(input, type, view) {
 function loadUsers() {
     const tbody = document.getElementById('userTableBody');
     
-    google.script.run
-        .withSuccessHandler(function(response) {
+    callAppsScript('getUsers', {})
+        .then(function(response) {
             if (response.success) {
                 tbody.innerHTML = '';
                 const users = response.users;
@@ -340,11 +409,11 @@ function loadUsers() {
                     const tr = document.createElement('tr');
                     
                     tr.innerHTML = `
-                        <td>${user.nama}</td>
-                        <td>${user.username}</td>
-                        <td>${user.password}</td>
-                        <td>${user.gmail}</td>
-                        <td>${user.facebook}</td>
+                        <td>${user.nama || '-'}</td>
+                        <td>${user.username || '-'}</td>
+                        <td>${user.password || '-'}</td>
+                        <td>${user.gmail || '-'}</td>
+                        <td>${user.facebook || '-'}</td>
                         <td><span class="status-badge ${user.status}">${user.status === 'online' ? 'Online' : 'Offline'}</span></td>
                         <td><button class="kick-btn" onclick="kickUser('${user.userId}')" title="Kick"><i class="fas fa-door-open"></i></button></td>
                     `;
@@ -352,35 +421,36 @@ function loadUsers() {
                     tbody.appendChild(tr);
                 }
                 
-                // Update online count
                 const onlineUsers = users.filter(u => u.status === 'online').length;
                 onlineCount = onlineUsers;
                 updateOnlineDisplay();
             }
-        })
-        .getUsers();
+        });
 }
 
 function kickUser(userId) {
     if (confirm('Yakin ingin kick user ini?')) {
-        google.script.run
-            .withSuccessHandler(function() {
-                loadUsers();
-            })
-            .kickUser(userId);
+        callAppsScript('kickUser', { userId: userId })
+            .then(function(response) {
+                if (response.success) {
+                    loadUsers();
+                    loadOnlineStatus();
+                } else {
+                    showMessage(response.message);
+                }
+            });
     }
 }
 
 // ==================== ONLINE STATUS ====================
-function loadOnlineStatus(view) {
-    google.script.run
-        .withSuccessHandler(function(response) {
+function loadOnlineStatus() {
+    callAppsScript('getUsers', {})
+        .then(function(response) {
             if (response.success) {
                 onlineCount = response.users.filter(u => u.status === 'online').length;
                 updateOnlineDisplay();
             }
-        })
-        .getUsers();
+        });
 }
 
 function updateOnlineDisplay() {
@@ -409,7 +479,7 @@ setInterval(function() {
             loadUsers();
         } else {
             loadMessages('User');
-            loadOnlineStatus('User');
+            loadOnlineStatus();
         }
     }
 }, 5000);
@@ -424,7 +494,7 @@ function showMessage(msg) {
     }, 3000);
 }
 
-// ==================== TERMS PAGE (STUB) ====================
+// ==================== TERMS PAGE ====================
 function openTerms(event) {
     event.preventDefault();
     alert('Syarat & Ketentuan akan ditampilkan di sini.');
