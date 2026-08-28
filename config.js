@@ -1,5 +1,4 @@
 // ==================== FIREBASE CONFIG ====================
-// API Key Firebase - Jangan diubah
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyAJvvJKNLJyFlAjAs_3-3puHW29T6wn4NI",
   authDomain: "anonymous-group-bbdd6.firebaseapp.com",
@@ -11,7 +10,6 @@ const FIREBASE_CONFIG = {
 };
 
 // ==================== APPS SCRIPT CONFIG ====================
-// URL Web App Apps Script
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw4GrZO3CTJL3NHEacAflBhAmqLobIjKKIuWPiBfIjyvhkI_jbd5Cr4SxKgXPv52CSr/exec";
 
 // Admin credentials
