@@ -7,6 +7,7 @@ let currentRole = null;
 let lastMessageId = null;
 let onlineCount = 0;
 let heartbeatInterval = null;
+let isLeaving = false; // Flag untuk mencegah heartbeat saat keluar
 
 // ==================== API HELPER ====================
 function callAppsScript(functionName, params = {}) {
@@ -122,8 +123,8 @@ function handleLogin() {
             role: 'admin'
         };
         currentRole = 'admin';
+        isLeaving = false;
         showAdminDashboard();
-        startHeartbeat();
         return;
     }
     
@@ -133,6 +134,7 @@ function handleLogin() {
             if (response.success) {
                 currentUser = response.user;
                 currentRole = 'user';
+                isLeaving = false;
                 showUserDashboard();
                 startHeartbeat();
             } else {
@@ -190,6 +192,7 @@ function loginWithGoogle() {
                 if (response.success) {
                     currentUser = response.user;
                     currentRole = 'user';
+                    isLeaving = false;
                     showUserDashboard();
                     startHeartbeat();
                 } else {
@@ -221,6 +224,7 @@ function loginWithGitHub() {
                 if (response.success) {
                     currentUser = response.user;
                     currentRole = 'user';
+                    isLeaving = false;
                     showUserDashboard();
                     startHeartbeat();
                 } else {
@@ -251,7 +255,6 @@ function showAdminDashboard() {
 
 // ==================== HEARTBEAT SYSTEM ====================
 function startHeartbeat() {
-    // Hentikan heartbeat lama jika ada
     stopHeartbeat();
     
     // Kirim heartbeat pertama
@@ -264,15 +267,18 @@ function startHeartbeat() {
 }
 
 function sendHeartbeat() {
+    // Cek apakah user sedang keluar
+    if (isLeaving) {
+        return; // Jangan kirim heartbeat jika sedang keluar
+    }
+    
     if (currentUser && currentUser.userId && currentUser.userId !== 'admin_001') {
         callAppsScript('updateUserStatus', {
             userId: currentUser.userId,
             status: 'online'
         }).then(function(response) {
             if (response.success) {
-                console.log('✅ Heartbeat terkirim: ' + currentUser.username);
-            } else {
-                console.error('❌ Heartbeat gagal:', response.message);
+                console.log('✅ Heartbeat: ' + currentUser.username);
             }
         });
     }
@@ -287,15 +293,19 @@ function stopHeartbeat() {
 
 // ==================== LOGOUT ====================
 function logout() {
-    // Update status offline sebelum keluar
+    // Set flag isLeaving untuk hentikan heartbeat
+    isLeaving = true;
+    
+    // Hentikan heartbeat
+    stopHeartbeat();
+    
+    // Update status offline
     if (currentUser && currentUser.userId && currentUser.userId !== 'admin_001') {
         callAppsScript('updateUserStatus', {
             userId: currentUser.userId,
             status: 'offline'
         });
     }
-    
-    stopHeartbeat();
     
     currentUser = null;
     currentRole = null;
@@ -311,23 +321,23 @@ function logout() {
     document.getElementById('loginPassword').value = '';
     document.getElementById('humanCheck').checked = false;
     checkLoginForm();
+    
+    isLeaving = false;
 }
 
-// ==================== DETECT TAB CLOSE ====================
-window.addEventListener('beforeunload', function() {
+// ==================== DETECT TAB CLOSE / EXIT ====================
+function sendOfflineStatus() {
     if (currentUser && currentUser.userId && currentUser.userId !== 'admin_001') {
-        // Kirim status offline saat tab ditutup
         const url = window.APP_CONFIG.appsScriptUrl;
         const formData = new URLSearchParams();
         formData.append('action', 'updateUserStatus');
         formData.append('userId', currentUser.userId);
         formData.append('status', 'offline');
         
-        // Gunakan navigator.sendBeacon agar request tetap terkirim saat tab ditutup
+        // Gunakan navigator.sendBeacon agar request tetap terkirim
         if (navigator.sendBeacon) {
             navigator.sendBeacon(url, formData.toString());
         } else {
-            // Fallback untuk browser yang tidak mendukung sendBeacon
             fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -336,15 +346,29 @@ window.addEventListener('beforeunload', function() {
             });
         }
     }
-    
+}
+
+// Saat tab akan ditutup
+window.addEventListener('beforeunload', function() {
+    isLeaving = true;
     stopHeartbeat();
+    sendOfflineStatus();
 });
 
-// ==================== DETECT VISIBILITY CHANGE ====================
+// Saat halaman di-unload (lebih reliable di mobile)
+window.addEventListener('pagehide', function() {
+    isLeaving = true;
+    stopHeartbeat();
+    sendOfflineStatus();
+});
+
+// Deteksi user pindah tab
 document.addEventListener('visibilitychange', function() {
+    if (isLeaving) return; // Jangan proses jika sedang keluar
+    
     if (currentUser && currentUser.userId && currentUser.userId !== 'admin_001') {
         if (document.hidden) {
-            // User membuka tab lain atau minimize
+            // User pindah ke tab lain
             callAppsScript('updateUserStatus', {
                 userId: currentUser.userId,
                 status: 'offline'
@@ -555,7 +579,7 @@ function updateOnlineDisplay() {
 
 // ==================== AUTO REFRESH ====================
 setInterval(function() {
-    if (currentUser) {
+    if (currentUser && !isLeaving) {
         if (currentRole === 'admin') {
             loadMessages('Admin');
             loadUsers();
