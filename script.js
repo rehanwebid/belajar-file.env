@@ -6,8 +6,6 @@ let currentUser = null;
 let currentRole = null;
 let lastMessageId = null;
 let onlineCount = 0;
-let heartbeatInterval = null;
-let isLeaving = false; // Flag untuk mencegah heartbeat saat keluar
 
 // ==================== API HELPER ====================
 function callAppsScript(functionName, params = {}) {
@@ -123,7 +121,6 @@ function handleLogin() {
             role: 'admin'
         };
         currentRole = 'admin';
-        isLeaving = false;
         showAdminDashboard();
         return;
     }
@@ -134,9 +131,7 @@ function handleLogin() {
             if (response.success) {
                 currentUser = response.user;
                 currentRole = 'user';
-                isLeaving = false;
                 showUserDashboard();
-                startHeartbeat();
             } else {
                 showMessage(response.message);
             }
@@ -192,9 +187,7 @@ function loginWithGoogle() {
                 if (response.success) {
                     currentUser = response.user;
                     currentRole = 'user';
-                    isLeaving = false;
                     showUserDashboard();
-                    startHeartbeat();
                 } else {
                     showMessage(response.message);
                 }
@@ -224,9 +217,7 @@ function loginWithGitHub() {
                 if (response.success) {
                     currentUser = response.user;
                     currentRole = 'user';
-                    isLeaving = false;
                     showUserDashboard();
-                    startHeartbeat();
                 } else {
                     showMessage(response.message);
                 }
@@ -253,52 +244,8 @@ function showAdminDashboard() {
     loadOnlineStatus();
 }
 
-// ==================== HEARTBEAT SYSTEM ====================
-function startHeartbeat() {
-    stopHeartbeat();
-    
-    // Kirim heartbeat pertama
-    sendHeartbeat();
-    
-    // Kirim heartbeat setiap 10 detik
-    heartbeatInterval = setInterval(function() {
-        sendHeartbeat();
-    }, 10000);
-}
-
-function sendHeartbeat() {
-    // Cek apakah user sedang keluar
-    if (isLeaving) {
-        return; // Jangan kirim heartbeat jika sedang keluar
-    }
-    
-    if (currentUser && currentUser.userId && currentUser.userId !== 'admin_001') {
-        callAppsScript('updateUserStatus', {
-            userId: currentUser.userId,
-            status: 'online'
-        }).then(function(response) {
-            if (response.success) {
-                console.log('✅ Heartbeat: ' + currentUser.username);
-            }
-        });
-    }
-}
-
-function stopHeartbeat() {
-    if (heartbeatInterval) {
-        clearInterval(heartbeatInterval);
-        heartbeatInterval = null;
-    }
-}
-
 // ==================== LOGOUT ====================
 function logout() {
-    // Set flag isLeaving untuk hentikan heartbeat
-    isLeaving = true;
-    
-    // Hentikan heartbeat
-    stopHeartbeat();
-    
     // Update status offline
     if (currentUser && currentUser.userId && currentUser.userId !== 'admin_001') {
         callAppsScript('updateUserStatus', {
@@ -321,12 +268,11 @@ function logout() {
     document.getElementById('loginPassword').value = '';
     document.getElementById('humanCheck').checked = false;
     checkLoginForm();
-    
-    isLeaving = false;
 }
 
-// ==================== DETECT TAB CLOSE / EXIT ====================
-function sendOfflineStatus() {
+// ==================== DETECT TAB CLOSE ====================
+// Hanya kirim offline saat tab benar-benar ditutup
+window.addEventListener('pagehide', function() {
     if (currentUser && currentUser.userId && currentUser.userId !== 'admin_001') {
         const url = window.APP_CONFIG.appsScriptUrl;
         const formData = new URLSearchParams();
@@ -334,7 +280,6 @@ function sendOfflineStatus() {
         formData.append('userId', currentUser.userId);
         formData.append('status', 'offline');
         
-        // Gunakan navigator.sendBeacon agar request tetap terkirim
         if (navigator.sendBeacon) {
             navigator.sendBeacon(url, formData.toString());
         } else {
@@ -343,41 +288,6 @@ function sendOfflineStatus() {
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: formData.toString(),
                 keepalive: true
-            });
-        }
-    }
-}
-
-// Saat tab akan ditutup
-window.addEventListener('beforeunload', function() {
-    isLeaving = true;
-    stopHeartbeat();
-    sendOfflineStatus();
-});
-
-// Saat halaman di-unload (lebih reliable di mobile)
-window.addEventListener('pagehide', function() {
-    isLeaving = true;
-    stopHeartbeat();
-    sendOfflineStatus();
-});
-
-// Deteksi user pindah tab
-document.addEventListener('visibilitychange', function() {
-    if (isLeaving) return; // Jangan proses jika sedang keluar
-    
-    if (currentUser && currentUser.userId && currentUser.userId !== 'admin_001') {
-        if (document.hidden) {
-            // User pindah ke tab lain
-            callAppsScript('updateUserStatus', {
-                userId: currentUser.userId,
-                status: 'offline'
-            });
-        } else {
-            // User kembali ke tab
-            callAppsScript('updateUserStatus', {
-                userId: currentUser.userId,
-                status: 'online'
             });
         }
     }
@@ -579,7 +489,7 @@ function updateOnlineDisplay() {
 
 // ==================== AUTO REFRESH ====================
 setInterval(function() {
-    if (currentUser && !isLeaving) {
+    if (currentUser) {
         if (currentRole === 'admin') {
             loadMessages('Admin');
             loadUsers();
