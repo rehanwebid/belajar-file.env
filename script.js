@@ -1,573 +1,425 @@
-// ==================== FIREBASE INITIALIZATION ====================
-firebase.initializeApp(window.APP_CONFIG.firebase);
+// ==================== KONFIGURASI ====================
+const SPREADSHEET_ID = '1Nbi5laaRcxEdW3S1ZMq8XcR0cmn8KVi-o_xfZwITxF4';
 
-// ==================== GLOBAL STATE ====================
-let currentUser = null;
-let currentRole = null;
-let lastMessageId = null;
-let onlineCount = 0;
-let isOfflineSent = false; // Flag untuk mencegah duplikat
+// Admin credentials
+const ADMIN_USERNAME = 'Admin.env';
+const ADMIN_PASSWORD = '19o0';
 
-// ==================== API HELPER ====================
-function callAppsScript(functionName, params = {}) {
-    const url = window.APP_CONFIG.appsScriptUrl;
+// Nama Sheet
+const SHEET_USERS = 'Users';
+const SHEET_MESSAGES = 'Messages';
+const SHEET_SETTINGS = 'Settings';
+
+// ==================== SETUP OTOMATIS ====================
+function setupSheets() {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     
-    const formData = new URLSearchParams();
-    formData.append('action', functionName);
+    let usersSheet = ss.getSheetByName(SHEET_USERS);
+    if (!usersSheet) {
+      usersSheet = ss.insertSheet(SHEET_USERS);
+    }
+    if (usersSheet.getLastRow() === 0) {
+      usersSheet.getRange('A1:J1').setValues([[
+        'userId', 'nama', 'username', 'password', 'gmail', 
+        'facebook', 'status', 'role', 'createdAt', 'lastLogin'
+      ]]);
+    }
+    usersSheet.setFrozenRows(1);
+    usersSheet.getRange('A1:J1').setFontWeight('bold');
+    usersSheet.getRange('A1:J1').setBackground('#ccff00');
+    usersSheet.getRange('A1:J1').setFontColor('#000000');
     
-    for (const key in params) {
-        formData.append(key, params[key]);
+    let messagesSheet = ss.getSheetByName(SHEET_MESSAGES);
+    if (!messagesSheet) {
+      messagesSheet = ss.insertSheet(SHEET_MESSAGES);
+    }
+    if (messagesSheet.getLastRow() === 0) {
+      messagesSheet.getRange('A1:G1').setValues([[
+        'messageId', 'senderName', 'senderUsername', 'message', 
+        'type', 'fileUrl', 'timestamp'
+      ]]);
+    }
+    messagesSheet.setFrozenRows(1);
+    messagesSheet.getRange('A1:G1').setFontWeight('bold');
+    messagesSheet.getRange('A1:G1').setBackground('#ccff00');
+    messagesSheet.getRange('A1:G1').setFontColor('#000000');
+    
+    let settingsSheet = ss.getSheetByName(SHEET_SETTINGS);
+    if (!settingsSheet) {
+      settingsSheet = ss.insertSheet(SHEET_SETTINGS);
+    }
+    if (settingsSheet.getLastRow() === 0) {
+      settingsSheet.getRange('A1:B1').setValues([['key', 'value']]);
+    }
+    settingsSheet.setFrozenRows(1);
+    settingsSheet.getRange('A1:B1').setFontWeight('bold');
+    settingsSheet.getRange('A1:B1').setBackground('#ccff00');
+    settingsSheet.getRange('A1:B1').setFontColor('#000000');
+    
+    return 'Setup berhasil!';
+  } catch (error) {
+    return 'Error: ' + error.toString();
+  }
+}
+
+// ==================== DOGET & DOPOST ====================
+function doGet(e) {
+  setupSheets();
+  return HtmlService.createHtmlOutput('API Ready');
+}
+
+function doPost(e) {
+  try {
+    setupSheets();
+    
+    if (!e || !e.parameter) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false, message: 'Invalid request'
+      })).setMimeType(ContentService.MimeType.JSON);
     }
     
-    return fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: formData.toString()
-    })
-    .then(response => response.json())
-    .catch(error => {
-        console.error('API Error:', error);
-        return { success: false, message: error.message };
-    });
+    const action = e.parameter.action;
+    const result = handleAction(action, e.parameter);
+    
+    return ContentService.createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false, message: 'Server error: ' + error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
-// ==================== TAB SWITCHING ====================
-function switchTab(tab) {
-    const loginForm = document.getElementById('loginForm');
-    const signupForm = document.getElementById('signupForm');
-    const tabLogin = document.getElementById('tabLogin');
-    const tabSignup = document.getElementById('tabSignup');
-    const logoText = document.getElementById('logoText');
-    const successMessage = document.getElementById('successMessage');
-    
-    successMessage.classList.remove('show');
-    
-    if (tab === 'login') {
-        loginForm.classList.remove('hidden');
-        signupForm.classList.add('hidden');
-        tabLogin.classList.add('active');
-        tabSignup.classList.remove('active');
-        logoText.textContent = 'Masuk untuk bergabung dengan grup';
-    } else {
-        loginForm.classList.add('hidden');
-        signupForm.classList.remove('hidden');
-        tabSignup.classList.add('active');
-        tabLogin.classList.remove('active');
-        logoText.textContent = 'Daftar untuk menjadi bagian dari grup';
-    }
+function handleAction(action, params) {
+  switch(action) {
+    case 'loginUser':
+      return loginUser(params.username, params.password);
+    case 'registerUser':
+      return registerUser(params.nama, params.username, params.password, params.gmail, params.facebook);
+    case 'loginWithProvider':
+      return loginWithProvider(params.provider, params.email, params.displayName);
+    case 'sendMessage':
+      return sendMessage(params.senderName, params.senderUsername, params.message, params.type, params.fileUrl);
+    case 'getMessages':
+      return getMessages(params.lastId || '');
+    case 'getUsers':
+      return getUsers();
+    case 'kickUser':
+      return kickUser(params.userId);
+    case 'updateUserStatus':
+      return updateUserStatus(params.userId, params.status);
+    case 'uploadFileToDrive':
+      return uploadFileToDrive(params.base64Data, params.fileName, params.mimeType);
+    default:
+      return { success: false, message: 'Unknown action: ' + action };
+  }
 }
 
-// ==================== PASSWORD TOGGLE ====================
-function togglePassword(inputId, button) {
-    const input = document.getElementById(inputId);
-    const icon = button.querySelector('i');
-    
-    if (input.type === 'password') {
-        input.type = 'text';
-        icon.classList.remove('fa-eye');
-        icon.classList.add('fa-eye-slash');
-    } else {
-        input.type = 'password';
-        icon.classList.remove('fa-eye-slash');
-        icon.classList.add('fa-eye');
-    }
+// ==================== HELPER FUNCTIONS ====================
+function generateId(prefix) {
+  const timestamp = Date.now();
+  const random = Math.floor(Math.random() * 10000);
+  return prefix + '_' + timestamp + '_' + random;
 }
 
-// ==================== FORM VALIDATION ====================
-function checkLoginForm() {
-    const username = document.getElementById('loginUsername').value.trim();
-    const password = document.getElementById('loginPassword').value.trim();
-    const humanCheck = document.getElementById('humanCheck').checked;
-    const btn = document.getElementById('loginBtn');
-    
-    if (username.length >= 3 && password.length >= 6 && humanCheck) {
-        btn.classList.add('active');
-        btn.disabled = false;
-    } else {
-        btn.classList.remove('active');
-        btn.disabled = true;
-    }
+function getTimestamp() {
+  return new Date().toISOString();
 }
 
-function checkSignupForm() {
-    const nama = document.getElementById('signupName').value.trim();
-    const username = document.getElementById('signupUsername').value.trim();
-    const password = document.getElementById('signupPassword').value.trim();
-    const confirmPassword = document.getElementById('signupConfirmPassword').value.trim();
-    const agreeTerms = document.getElementById('agreeTerms').checked;
-    const btn = document.getElementById('signupBtn');
-    
-    if (nama.length >= 3 && username.length >= 3 && password.length >= 6 && confirmPassword === password && agreeTerms) {
-        btn.classList.add('active');
-        btn.disabled = false;
-    } else {
-        btn.classList.remove('active');
-        btn.disabled = true;
-    }
+function getSheetByName(name) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  return ss.getSheetByName(name);
 }
 
-// ==================== LOGIN ====================
-function handleLogin() {
-    const username = document.getElementById('loginUsername').value.trim();
-    const password = document.getElementById('loginPassword').value.trim();
+// ==================== AUTO OFFLINE CHECK ====================
+function autoOfflineCheck(usersSheet) {
+  try {
+    const data = usersSheet.getDataRange().getValues();
+    const now = new Date();
     
-    // Cek admin login
-    if (username === window.APP_CONFIG.admin.username && password === window.APP_CONFIG.admin.password) {
-        currentUser = { 
-            userId: 'admin_001', 
-            username: username, 
-            nama: 'Administrator',
-            role: 'admin'
-        };
-        currentRole = 'admin';
-        isOfflineSent = false;
-        showAdminDashboard();
-        return;
-    }
-    
-    // Login user biasa via Apps Script API
-    callAppsScript('loginUser', { username: username, password: password })
-        .then(function(response) {
-            if (response.success) {
-                currentUser = response.user;
-                currentRole = 'user';
-                isOfflineSent = false;
-                showUserDashboard();
-            } else {
-                showMessage(response.message);
-            }
-        });
-}
-
-// ==================== SIGNUP ====================
-function handleSignup() {
-    const nama = document.getElementById('signupName').value.trim();
-    const username = document.getElementById('signupUsername').value.trim();
-    const password = document.getElementById('signupPassword').value.trim();
-    
-    callAppsScript('registerUser', {
-        nama: nama,
-        username: username,
-        password: password,
-        gmail: '-',
-        facebook: '-'
-    })
-    .then(function(response) {
-        if (response.success) {
-            showMessage('✓ Registrasi berhasil! Silakan login.');
-            switchTab('login');
-            document.getElementById('loginUsername').value = username;
-            document.getElementById('signupName').value = '';
-            document.getElementById('signupUsername').value = '';
-            document.getElementById('signupPassword').value = '';
-            document.getElementById('signupConfirmPassword').value = '';
-            document.getElementById('agreeTerms').checked = false;
-            checkLoginForm();
-        } else {
-            showMessage(response.message);
-        }
-    });
-}
-
-// ==================== GOOGLE LOGIN ====================
-function loginWithGoogle() {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    
-    firebase.auth().signInWithPopup(provider)
-        .then(function(result) {
-            const user = result.user;
-            const email = user.email || '-';
-            const displayName = user.displayName || email.split('@')[0];
-            
-            callAppsScript('loginWithProvider', {
-                provider: 'google',
-                email: email,
-                displayName: displayName
-            })
-            .then(function(response) {
-                if (response.success) {
-                    currentUser = response.user;
-                    currentRole = 'user';
-                    isOfflineSent = false;
-                    showUserDashboard();
-                } else {
-                    showMessage(response.message);
-                }
-            });
-        })
-        .catch(function(error) {
-            showMessage('Error: ' + error.message);
-        });
-}
-
-// ==================== GITHUB LOGIN ====================
-function loginWithGitHub() {
-    const provider = new firebase.auth.GithubAuthProvider();
-    
-    firebase.auth().signInWithPopup(provider)
-        .then(function(result) {
-            const user = result.user;
-            const email = user.email || '-';
-            const displayName = user.displayName || email.split('@')[0];
-            
-            callAppsScript('loginWithProvider', {
-                provider: 'github',
-                email: email,
-                displayName: displayName
-            })
-            .then(function(response) {
-                if (response.success) {
-                    currentUser = response.user;
-                    currentRole = 'user';
-                    isOfflineSent = false;
-                    showUserDashboard();
-                } else {
-                    showMessage(response.message);
-                }
-            });
-        })
-        .catch(function(error) {
-            showMessage('Error: ' + error.message);
-        });
-}
-
-// ==================== DASHBOARD VIEWS ====================
-function showUserDashboard() {
-    document.getElementById('authPage').classList.add('hidden');
-    document.getElementById('dashboardUserPage').classList.add('active');
-    loadMessages('User');
-    loadOnlineStatus();
-}
-
-function showAdminDashboard() {
-    document.getElementById('authPage').classList.add('hidden');
-    document.getElementById('dashboardAdminPage').classList.add('active');
-    loadMessages('Admin');
-    loadUsers();
-    loadOnlineStatus();
-}
-
-// ==================== SEND OFFLINE STATUS ====================
-function sendOfflineStatus() {
-    if (isOfflineSent) return; // Cegah duplikat
-    if (!currentUser || !currentUser.userId) return;
-    if (currentUser.userId === 'admin_001') return;
-    
-    isOfflineSent = true;
-    
-    const url = window.APP_CONFIG.appsScriptUrl;
-    const formData = new URLSearchParams();
-    formData.append('action', 'updateUserStatus');
-    formData.append('userId', currentUser.userId);
-    formData.append('status', 'offline');
-    
-    // Coba kirim dengan sendBeacon
-    if (navigator.sendBeacon) {
-        try {
-            const sent = navigator.sendBeacon(url, formData.toString());
-            console.log('📤 Offline beacon terkirim:', sent);
-            return;
-        } catch (e) {
-            console.error('sendBeacon error:', e);
-        }
-    }
-    
-    // Fallback: fetch dengan keepalive
-    fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formData.toString(),
-        keepalive: true
-    }).then(function() {
-        console.log('📤 Offline fetch terkirim');
-    }).catch(function(error) {
-        console.error('❌ Offline fetch gagal:', error);
-        // Reset flag agar bisa dicoba lagi
-        isOfflineSent = false;
-    });
-}
-
-// ==================== EXIT DETECTION (MULTIPLE EVENTS) ====================
-// Event 1: pagehide (paling reliable)
-window.addEventListener('pagehide', function(event) {
-    console.log('🔄 pagehide event terpicu');
-    sendOfflineStatus();
-});
-
-// Event 2: beforeunload (cadangan)
-window.addEventListener('beforeunload', function(event) {
-    console.log('🔄 beforeunload event terpicu');
-    sendOfflineStatus();
-});
-
-// Event 3: unload (cadangan kedua)
-window.addEventListener('unload', function(event) {
-    console.log('🔄 unload event terpicu');
-    sendOfflineStatus();
-});
-
-// ==================== LOGOUT ====================
-function logout() {
-    // Kirim offline sebelum logout
-    sendOfflineStatus();
-    
-    currentUser = null;
-    currentRole = null;
-    lastMessageId = null;
-    
-    firebase.auth().signOut().catch(function() {});
-    
-    document.getElementById('dashboardUserPage').classList.remove('active');
-    document.getElementById('dashboardAdminPage').classList.remove('active');
-    document.getElementById('authPage').classList.remove('hidden');
-    
-    document.getElementById('loginUsername').value = '';
-    document.getElementById('loginPassword').value = '';
-    document.getElementById('humanCheck').checked = false;
-    checkLoginForm();
-    
-    isOfflineSent = false;
-}
-
-// ==================== CHAT ====================
-function sendMessage(view) {
-    const inputId = view === 'Admin' ? 'messageInputAdmin' : 'messageInputUser';
-    const input = document.getElementById(inputId);
-    const message = input.value.trim();
-    
-    if (message) {
-        const senderName = currentUser.nama || currentUser.username;
-        const senderUsername = currentUser.username;
+    for (let i = 1; i < data.length; i++) {
+      const status = data[i][6];
+      const lastLogin = data[i][9];
+      
+      if (status === 'online' && lastLogin) {
+        const lastLoginDate = new Date(lastLogin);
+        const diffSeconds = (now - lastLoginDate) / 1000;
         
-        callAppsScript('sendMessage', {
-            senderName: senderName,
-            senderUsername: senderUsername,
-            message: message,
-            type: 'text',
-            fileUrl: '-'
-        })
-        .then(function(response) {
-            if (response.success) {
-                input.value = '';
-                loadMessages(view);
-                if (view === 'Admin') {
-                    loadUsers();
-                }
-                loadOnlineStatus();
-            }
-        });
+        // Jika tidak ada ping dalam 10 detik, set offline
+        if (diffSeconds > 10) {
+          usersSheet.getRange(i + 1, 7).setValue('offline');
+        }
+      }
     }
+  } catch (error) {
+    console.error('Error autoOfflineCheck: ' + error.toString());
+  }
 }
 
-function loadMessages(view) {
-    const chatAreaId = view === 'Admin' ? 'chatAreaAdmin' : 'chatAreaUser';
-    const chatArea = document.getElementById(chatAreaId);
+// ==================== AUTH FUNCTIONS ====================
+function loginUser(username, password) {
+  try {
+    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+      return {
+        success: true,
+        user: {
+          userId: 'admin_001',
+          nama: 'Administrator',
+          username: ADMIN_USERNAME,
+          role: 'admin'
+        }
+      };
+    }
     
-    callAppsScript('getMessages', { lastId: lastMessageId || '' })
-        .then(function(response) {
-            if (response.success) {
-                chatArea.innerHTML = '';
-                const messages = response.messages;
-                
-                for (let i = 0; i < messages.length; i++) {
-                    const msg = messages[i];
-                    const isSelf = msg.senderUsername === currentUser.username;
-                    const div = document.createElement('div');
-                    div.className = 'chat-message ' + (isSelf ? 'self' : 'other');
-                    
-                    if (!isSelf) {
-                        const senderSpan = document.createElement('span');
-                        senderSpan.className = 'sender-name';
-                        senderSpan.textContent = msg.senderName;
-                        div.appendChild(senderSpan);
-                    }
-                    
-                    div.appendChild(document.createTextNode(msg.message));
-                    
-                    const timeSpan = document.createElement('span');
-                    timeSpan.className = 'chat-time';
-                    const date = new Date(msg.timestamp);
-                    const hours = String(date.getHours()).padStart(2, '0');
-                    const minutes = String(date.getMinutes()).padStart(2, '0');
-                    timeSpan.textContent = hours + ':' + minutes;
-                    div.appendChild(timeSpan);
-                    
-                    chatArea.appendChild(div);
-                }
-                
-                chatArea.scrollTop = chatArea.scrollHeight;
-                
-                if (messages.length > 0) {
-                    lastMessageId = messages[messages.length - 1].messageId;
-                }
-            }
-        });
+    const usersSheet = getSheetByName(SHEET_USERS);
+    if (!usersSheet) return { success: false, message: 'Sheet Users belum dibuat' };
+    
+    const data = usersSheet.getDataRange().getValues();
+    
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][2] === username && data[i][3] === password) {
+        usersSheet.getRange(i + 1, 7).setValue('online');
+        usersSheet.getRange(i + 1, 10).setValue(getTimestamp());
+        
+        return {
+          success: true,
+          user: {
+            userId: data[i][0],
+            nama: data[i][1],
+            username: data[i][2],
+            password: data[i][3],
+            gmail: data[i][4],
+            facebook: data[i][5],
+            status: 'online',
+            role: data[i][7]
+          }
+        };
+      }
+    }
+    
+    return { success: false, message: 'Username atau password salah' };
+  } catch (error) {
+    return { success: false, message: error.toString() };
+  }
 }
 
-// ==================== FILE UPLOAD ====================
-function handleFileUpload(input, type, view) {
-    const file = input.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const base64Data = e.target.result.split(',')[1];
-            const fileName = file.name;
-            const mimeType = file.type;
-            
-            callAppsScript('uploadFileToDrive', {
-                base64Data: base64Data,
-                fileName: fileName,
-                mimeType: mimeType
-            })
-            .then(function(response) {
-                if (response.success) {
-                    const senderName = currentUser.nama || currentUser.username;
-                    const senderUsername = currentUser.username;
-                    
-                    callAppsScript('sendMessage', {
-                        senderName: senderName,
-                        senderUsername: senderUsername,
-                        message: '📄 ' + fileName,
-                        type: 'document',
-                        fileUrl: response.fileUrl
-                    })
-                    .then(function() {
-                        loadMessages(view);
-                        if (view === 'Admin') {
-                            loadUsers();
-                        }
-                        loadOnlineStatus();
-                    });
-                }
-            });
-        };
-        reader.readAsDataURL(file);
-        input.value = '';
+function registerUser(nama, username, password, gmail, facebook) {
+  try {
+    const usersSheet = getSheetByName(SHEET_USERS);
+    if (!usersSheet) return { success: false, message: 'Sheet Users belum dibuat' };
+    
+    const data = usersSheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][2] && data[i][2].toLowerCase() === username.toLowerCase()) {
+        return { success: false, message: 'Username sudah digunakan' };
+      }
     }
+    
+    const userId = generateId('usr');
+    const timestamp = getTimestamp();
+    
+    usersSheet.appendRow([
+      userId, nama || '-', username, password, gmail || '-', 
+      facebook || '-', 'offline', 'user', timestamp, timestamp
+    ]);
+    
+    return { success: true, message: 'Registrasi berhasil', userId: userId };
+  } catch (error) {
+    return { success: false, message: error.toString() };
+  }
+}
+
+function loginWithProvider(provider, email, displayName) {
+  try {
+    const usersSheet = getSheetByName(SHEET_USERS);
+    if (!usersSheet) return { success: false, message: 'Sheet Users belum dibuat' };
+    
+    const data = usersSheet.getDataRange().getValues();
+    
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][4] && data[i][4].toLowerCase() === email.toLowerCase()) {
+        usersSheet.getRange(i + 1, 7).setValue('online');
+        usersSheet.getRange(i + 1, 10).setValue(getTimestamp());
+        
+        return {
+          success: true,
+          user: {
+            userId: data[i][0],
+            nama: data[i][1],
+            username: data[i][2],
+            gmail: data[i][4],
+            facebook: data[i][5],
+            role: data[i][7]
+          }
+        };
+      }
+    }
+    
+    const userId = generateId('usr');
+    const timestamp = getTimestamp();
+    const username = displayName ? displayName.replace(/\s+/g, '_').toLowerCase() : 'user_' + Date.now();
+    
+    usersSheet.appendRow([
+      userId, displayName || '-', username, '-', email || '-',
+      provider === 'facebook' ? displayName : '-', 'online', 'user', timestamp, timestamp
+    ]);
+    
+    return {
+      success: true,
+      user: {
+        userId: userId,
+        nama: displayName,
+        username: username,
+        gmail: email,
+        role: 'user'
+      }
+    };
+  } catch (error) {
+    return { success: false, message: error.toString() };
+  }
+}
+
+// ==================== CHAT FUNCTIONS ====================
+function sendMessage(senderName, senderUsername, message, type, fileUrl) {
+  try {
+    const messagesSheet = getSheetByName(SHEET_MESSAGES);
+    if (!messagesSheet) return { success: false, message: 'Sheet Messages belum dibuat' };
+    
+    const messageId = generateId('msg');
+    const timestamp = getTimestamp();
+    
+    messagesSheet.appendRow([
+      messageId, senderName || senderUsername, senderUsername, 
+      message || '', type || 'text', fileUrl || '-', timestamp
+    ]);
+    
+    return { success: true, message: 'Pesan terkirim', messageId: messageId };
+  } catch (error) {
+    return { success: false, message: error.toString() };
+  }
+}
+
+function getMessages(lastId) {
+  try {
+    const messagesSheet = getSheetByName(SHEET_MESSAGES);
+    if (!messagesSheet) return { success: true, messages: [] };
+    
+    const data = messagesSheet.getDataRange().getValues();
+    const messages = [];
+    
+    for (let i = 1; i < data.length; i++) {
+      const msg = {
+        messageId: data[i][0],
+        senderName: data[i][1],
+        senderUsername: data[i][2],
+        message: data[i][3],
+        type: data[i][4],
+        fileUrl: data[i][5],
+        timestamp: data[i][6]
+      };
+      
+      if (!lastId || msg.messageId > lastId) {
+        messages.push(msg);
+      }
+    }
+    
+    return { success: true, messages: messages };
+  } catch (error) {
+    return { success: false, message: error.toString() };
+  }
 }
 
 // ==================== ADMIN FUNCTIONS ====================
-function loadUsers() {
-    const tbody = document.getElementById('userTableBody');
+function getUsers() {
+  try {
+    const usersSheet = getSheetByName(SHEET_USERS);
+    if (!usersSheet) return { success: true, users: [] };
     
-    callAppsScript('getUsers', {})
-        .then(function(response) {
-            if (response.success) {
-                tbody.innerHTML = '';
-                const users = response.users;
-                
-                for (let i = 0; i < users.length; i++) {
-                    const user = users[i];
-                    const tr = document.createElement('tr');
-                    
-                    tr.innerHTML = `
-                        <td>${user.nama || '-'}</td>
-                        <td>${user.username || '-'}</td>
-                        <td>${user.password || '-'}</td>
-                        <td>${user.gmail || '-'}</td>
-                        <td>${user.facebook || '-'}</td>
-                        <td><span class="status-badge ${user.status}">${user.status === 'online' ? 'Online' : 'Offline'}</span></td>
-                        <td><button class="kick-btn" onclick="kickUser('${user.userId}')" title="Kick"><i class="fas fa-door-open"></i></button></td>
-                    `;
-                    
-                    tbody.appendChild(tr);
-                }
-                
-                const onlineUsers = users.filter(u => u.status === 'online').length;
-                onlineCount = onlineUsers;
-                updateOnlineDisplay();
-            }
-        });
+    // Auto check offline sebelum ambil data
+    autoOfflineCheck(usersSheet);
+    
+    const data = usersSheet.getDataRange().getValues();
+    const users = [];
+    
+    for (let i = 1; i < data.length; i++) {
+      users.push({
+        userId: data[i][0],
+        nama: data[i][1],
+        username: data[i][2],
+        password: data[i][3],
+        gmail: data[i][4],
+        facebook: data[i][5],
+        status: data[i][6],
+        role: data[i][7],
+        createdAt: data[i][8],
+        lastLogin: data[i][9]
+      });
+    }
+    
+    return { success: true, users: users };
+  } catch (error) {
+    return { success: false, message: error.toString() };
+  }
 }
 
 function kickUser(userId) {
-    if (confirm('Yakin ingin kick user ini?')) {
-        callAppsScript('kickUser', { userId: userId })
-            .then(function(response) {
-                if (response.success) {
-                    loadUsers();
-                    loadOnlineStatus();
-                } else {
-                    showMessage(response.message);
-                }
-            });
-    }
-}
-
-// ==================== ONLINE STATUS ====================
-function loadOnlineStatus() {
-    callAppsScript('getUsers', {})
-        .then(function(response) {
-            if (response.success) {
-                onlineCount = response.users.filter(u => u.status === 'online').length;
-                updateOnlineDisplay();
-            }
-        });
-}
-
-function updateOnlineDisplay() {
-    const userDot = document.getElementById('onlineDotUser');
-    const userCount = document.getElementById('onlineCountUser');
-    const adminDot = document.getElementById('onlineDotAdmin');
-    const adminCount = document.getElementById('onlineCountAdmin');
+  try {
+    const usersSheet = getSheetByName(SHEET_USERS);
+    if (!usersSheet) return { success: false, message: 'Sheet Users belum dibuat' };
     
-    if (onlineCount > 0) {
-        if (userDot) userDot.classList.add('blinking');
-        if (adminDot) adminDot.classList.add('blinking');
+    const data = usersSheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === userId) {
+        usersSheet.deleteRow(i + 1);
+        return { success: true, message: 'User berhasil di-kick' };
+      }
+    }
+    return { success: false, message: 'User tidak ditemukan' };
+  } catch (error) {
+    return { success: false, message: error.toString() };
+  }
+}
+
+function updateUserStatus(userId, status) {
+  try {
+    const usersSheet = getSheetByName(SHEET_USERS);
+    if (!usersSheet) return { success: false, message: 'Sheet Users belum dibuat' };
+    
+    const data = usersSheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === userId) {
+        usersSheet.getRange(i + 1, 7).setValue(status);
+        usersSheet.getRange(i + 1, 10).setValue(getTimestamp());
+        return { success: true, message: 'Status diupdate' };
+      }
+    }
+    return { success: false, message: 'User tidak ditemukan' };
+  } catch (error) {
+    return { success: false, message: error.toString() };
+  }
+}
+
+// ==================== FILE UPLOAD ====================
+function uploadFileToDrive(base64Data, fileName, mimeType) {
+  try {
+    const folderName = 'Anonymous Group Uploads';
+    const folders = DriveApp.getFoldersByName(folderName);
+    let folder;
+    
+    if (folders.hasNext()) {
+      folder = folders.next();
     } else {
-        if (userDot) userDot.classList.remove('blinking');
-        if (adminDot) adminDot.classList.remove('blinking');
+      folder = DriveApp.createFolder(folderName);
     }
     
-    if (userCount) userCount.textContent = onlineCount + ' Online';
-    if (adminCount) adminCount.textContent = onlineCount + ' Online';
+    const decoded = Utilities.base64Decode(base64Data);
+    const blob = Utilities.newBlob(decoded, mimeType, fileName);
+    const file = folder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    
+    return { success: true, fileUrl: file.getUrl(), fileName: fileName };
+  } catch (error) {
+    return { success: false, message: error.toString() };
+  }
 }
-
-// ==================== AUTO REFRESH ====================
-setInterval(function() {
-    if (currentUser) {
-        if (currentRole === 'admin') {
-            loadMessages('Admin');
-            loadUsers();
-        } else {
-            loadMessages('User');
-            loadOnlineStatus();
-        }
-    }
-}, 5000);
-
-// ==================== SHOW MESSAGE ====================
-function showMessage(msg) {
-    const successMessage = document.getElementById('successMessage');
-    successMessage.textContent = msg;
-    successMessage.classList.add('show');
-    setTimeout(function() {
-        successMessage.classList.remove('show');
-    }, 3000);
-}
-
-// ==================== TERMS PAGE ====================
-function openTerms(event) {
-    event.preventDefault();
-    document.getElementById('termsPage').classList.add('active');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeTerms() {
-    document.getElementById('termsPage').classList.remove('active');
-    document.body.style.overflow = 'auto';
-}
-
-function acceptTerms() {
-    document.getElementById('agreeTerms').checked = true;
-    checkSignupForm();
-    closeTerms();
-}
-
-// ==================== INIT ====================
-document.addEventListener('DOMContentLoaded', function() {
-    checkLoginForm();
-    checkSignupForm();
-});
