@@ -6,6 +6,7 @@ let currentUser = null;
 let currentRole = null;
 let lastMessageId = null;
 let onlineCount = 0;
+let heartbeatInterval = null;
 
 // ==================== API HELPER ====================
 function callAppsScript(functionName, params = {}) {
@@ -122,6 +123,7 @@ function handleLogin() {
         };
         currentRole = 'admin';
         showAdminDashboard();
+        startHeartbeat();
         return;
     }
     
@@ -132,6 +134,7 @@ function handleLogin() {
                 currentUser = response.user;
                 currentRole = 'user';
                 showUserDashboard();
+                startHeartbeat();
             } else {
                 showMessage(response.message);
             }
@@ -188,6 +191,7 @@ function loginWithGoogle() {
                     currentUser = response.user;
                     currentRole = 'user';
                     showUserDashboard();
+                    startHeartbeat();
                 } else {
                     showMessage(response.message);
                 }
@@ -218,6 +222,7 @@ function loginWithGitHub() {
                     currentUser = response.user;
                     currentRole = 'user';
                     showUserDashboard();
+                    startHeartbeat();
                 } else {
                     showMessage(response.message);
                 }
@@ -244,8 +249,54 @@ function showAdminDashboard() {
     loadOnlineStatus();
 }
 
+// ==================== HEARTBEAT SYSTEM ====================
+function startHeartbeat() {
+    // Hentikan heartbeat lama jika ada
+    stopHeartbeat();
+    
+    // Kirim heartbeat pertama
+    sendHeartbeat();
+    
+    // Kirim heartbeat setiap 10 detik
+    heartbeatInterval = setInterval(function() {
+        sendHeartbeat();
+    }, 10000);
+}
+
+function sendHeartbeat() {
+    if (currentUser && currentUser.userId && currentUser.userId !== 'admin_001') {
+        callAppsScript('updateUserStatus', {
+            userId: currentUser.userId,
+            status: 'online'
+        }).then(function(response) {
+            if (response.success) {
+                console.log('✅ Heartbeat terkirim: ' + currentUser.username);
+            } else {
+                console.error('❌ Heartbeat gagal:', response.message);
+            }
+        });
+    }
+}
+
+function stopHeartbeat() {
+    if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
+    }
+}
+
 // ==================== LOGOUT ====================
 function logout() {
+    // Update status offline sebelum keluar
+    if (currentUser && currentUser.userId && currentUser.userId !== 'admin_001') {
+        callAppsScript('updateUserStatus', {
+            userId: currentUser.userId,
+            status: 'offline'
+        });
+    }
+    
+    stopHeartbeat();
+    
     currentUser = null;
     currentRole = null;
     lastMessageId = null;
@@ -261,6 +312,52 @@ function logout() {
     document.getElementById('humanCheck').checked = false;
     checkLoginForm();
 }
+
+// ==================== DETECT TAB CLOSE ====================
+window.addEventListener('beforeunload', function() {
+    if (currentUser && currentUser.userId && currentUser.userId !== 'admin_001') {
+        // Kirim status offline saat tab ditutup
+        const url = window.APP_CONFIG.appsScriptUrl;
+        const formData = new URLSearchParams();
+        formData.append('action', 'updateUserStatus');
+        formData.append('userId', currentUser.userId);
+        formData.append('status', 'offline');
+        
+        // Gunakan navigator.sendBeacon agar request tetap terkirim saat tab ditutup
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon(url, formData.toString());
+        } else {
+            // Fallback untuk browser yang tidak mendukung sendBeacon
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString(),
+                keepalive: true
+            });
+        }
+    }
+    
+    stopHeartbeat();
+});
+
+// ==================== DETECT VISIBILITY CHANGE ====================
+document.addEventListener('visibilitychange', function() {
+    if (currentUser && currentUser.userId && currentUser.userId !== 'admin_001') {
+        if (document.hidden) {
+            // User membuka tab lain atau minimize
+            callAppsScript('updateUserStatus', {
+                userId: currentUser.userId,
+                status: 'offline'
+            });
+        } else {
+            // User kembali ke tab
+            callAppsScript('updateUserStatus', {
+                userId: currentUser.userId,
+                status: 'online'
+            });
+        }
+    }
+});
 
 // ==================== CHAT ====================
 function sendMessage(view) {
