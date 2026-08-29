@@ -6,6 +6,7 @@ let currentUser = null;
 let currentRole = null;
 let lastMessageId = null;
 let onlineCount = 0;
+let isOfflineSent = false; // Flag untuk mencegah duplikat
 
 // ==================== API HELPER ====================
 function callAppsScript(functionName, params = {}) {
@@ -121,6 +122,7 @@ function handleLogin() {
             role: 'admin'
         };
         currentRole = 'admin';
+        isOfflineSent = false;
         showAdminDashboard();
         return;
     }
@@ -131,6 +133,7 @@ function handleLogin() {
             if (response.success) {
                 currentUser = response.user;
                 currentRole = 'user';
+                isOfflineSent = false;
                 showUserDashboard();
             } else {
                 showMessage(response.message);
@@ -187,6 +190,7 @@ function loginWithGoogle() {
                 if (response.success) {
                     currentUser = response.user;
                     currentRole = 'user';
+                    isOfflineSent = false;
                     showUserDashboard();
                 } else {
                     showMessage(response.message);
@@ -217,6 +221,7 @@ function loginWithGitHub() {
                 if (response.success) {
                     currentUser = response.user;
                     currentRole = 'user';
+                    isOfflineSent = false;
                     showUserDashboard();
                 } else {
                     showMessage(response.message);
@@ -244,15 +249,69 @@ function showAdminDashboard() {
     loadOnlineStatus();
 }
 
+// ==================== SEND OFFLINE STATUS ====================
+function sendOfflineStatus() {
+    if (isOfflineSent) return; // Cegah duplikat
+    if (!currentUser || !currentUser.userId) return;
+    if (currentUser.userId === 'admin_001') return;
+    
+    isOfflineSent = true;
+    
+    const url = window.APP_CONFIG.appsScriptUrl;
+    const formData = new URLSearchParams();
+    formData.append('action', 'updateUserStatus');
+    formData.append('userId', currentUser.userId);
+    formData.append('status', 'offline');
+    
+    // Coba kirim dengan sendBeacon
+    if (navigator.sendBeacon) {
+        try {
+            const sent = navigator.sendBeacon(url, formData.toString());
+            console.log('📤 Offline beacon terkirim:', sent);
+            return;
+        } catch (e) {
+            console.error('sendBeacon error:', e);
+        }
+    }
+    
+    // Fallback: fetch dengan keepalive
+    fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formData.toString(),
+        keepalive: true
+    }).then(function() {
+        console.log('📤 Offline fetch terkirim');
+    }).catch(function(error) {
+        console.error('❌ Offline fetch gagal:', error);
+        // Reset flag agar bisa dicoba lagi
+        isOfflineSent = false;
+    });
+}
+
+// ==================== EXIT DETECTION (MULTIPLE EVENTS) ====================
+// Event 1: pagehide (paling reliable)
+window.addEventListener('pagehide', function(event) {
+    console.log('🔄 pagehide event terpicu');
+    sendOfflineStatus();
+});
+
+// Event 2: beforeunload (cadangan)
+window.addEventListener('beforeunload', function(event) {
+    console.log('🔄 beforeunload event terpicu');
+    sendOfflineStatus();
+});
+
+// Event 3: unload (cadangan kedua)
+window.addEventListener('unload', function(event) {
+    console.log('🔄 unload event terpicu');
+    sendOfflineStatus();
+});
+
 // ==================== LOGOUT ====================
 function logout() {
-    // Update status offline
-    if (currentUser && currentUser.userId && currentUser.userId !== 'admin_001') {
-        callAppsScript('updateUserStatus', {
-            userId: currentUser.userId,
-            status: 'offline'
-        });
-    }
+    // Kirim offline sebelum logout
+    sendOfflineStatus();
     
     currentUser = null;
     currentRole = null;
@@ -268,30 +327,9 @@ function logout() {
     document.getElementById('loginPassword').value = '';
     document.getElementById('humanCheck').checked = false;
     checkLoginForm();
+    
+    isOfflineSent = false;
 }
-
-// ==================== DETECT TAB CLOSE ====================
-// Hanya kirim offline saat tab benar-benar ditutup
-window.addEventListener('pagehide', function() {
-    if (currentUser && currentUser.userId && currentUser.userId !== 'admin_001') {
-        const url = window.APP_CONFIG.appsScriptUrl;
-        const formData = new URLSearchParams();
-        formData.append('action', 'updateUserStatus');
-        formData.append('userId', currentUser.userId);
-        formData.append('status', 'offline');
-        
-        if (navigator.sendBeacon) {
-            navigator.sendBeacon(url, formData.toString());
-        } else {
-            fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: formData.toString(),
-                keepalive: true
-            });
-        }
-    }
-});
 
 // ==================== CHAT ====================
 function sendMessage(view) {
