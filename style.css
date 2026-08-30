@@ -533,7 +533,7 @@ body::-webkit-scrollbar {
     font-weight: 600;
 }
 
-/* Tabel Admin - Header sticky */
+/* Tabel Admin */
 .admin-content {
     flex: 1;
     overflow-y: auto;
@@ -694,7 +694,7 @@ body::-webkit-scrollbar {
     scrollbar-width: none;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
 .chat-area::-webkit-scrollbar {
@@ -703,7 +703,7 @@ body::-webkit-scrollbar {
 
 .chat-message {
     max-width: 75%;
-    padding: 12px 14px;
+    padding: 8px 12px;
     border-radius: 12px;
     font-size: 14px;
     word-wrap: break-word;
@@ -730,13 +730,13 @@ body::-webkit-scrollbar {
     font-size: 11px;
     font-weight: 600;
     color: #ccff00;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
     display: flex;
     align-items: center;
     gap: 3px;
 }
 
-/* Foto admin di chat */
+/* Foto admin */
 .sender-photo {
     width: 13px;
     height: 13px;
@@ -751,7 +751,7 @@ body::-webkit-scrollbar {
 .chat-message .chat-time {
     font-size: 10px;
     color: #666666;
-    margin-top: 4px;
+    margin-top: 3px;
     display: block;
     text-align: right;
 }
@@ -760,64 +760,95 @@ body::-webkit-scrollbar {
     color: #444444;
 }
 
-/* ==================== FILE MESSAGE STYLES ==================== */
+/* ==================== FILE MESSAGE - WHATSAPP STYLE ==================== */
 .file-message-content {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.file-info {
     display: flex;
     align-items: center;
     gap: 10px;
+    min-width: 200px;
+    max-width: 250px;
+}
+
+.file-icon-wrapper {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: rgba(204, 255, 0, 0.15);
 }
 
 .file-icon {
-    font-size: 24px;
+    font-size: 16px;
     color: #ccff00;
 }
 
 .file-details {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
 .file-name {
     font-size: 13px;
     font-weight: 600;
     word-break: break-all;
-    display: block;
-    margin-bottom: 6px;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
-.file-actions {
+.file-meta {
     display: flex;
+    align-items: center;
     gap: 8px;
 }
 
 .file-btn {
-    padding: 6px 12px;
-    border: 1px solid #2a2a2a;
-    border-radius: 6px;
-    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 15px;
+    font-size: 11px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     text-decoration: none;
     display: inline-block;
     text-align: center;
-    background: #1a1a1a;
-    color: #cccccc;
+    border: none;
 }
 
-.file-btn:hover {
+.file-btn.open-btn {
+    background: #ccff00;
+    color: #000000;
+}
+
+.file-btn.open-btn:hover {
+    background: #d9ff33;
+}
+
+.file-btn.download-btn {
+    background: transparent;
+    color: #cccccc;
+    border: 1px solid #2a2a2a;
+}
+
+.file-btn.download-btn:hover {
     background: #222222;
-    border-color: #ccff00;
     color: #ccff00;
+    border-color: #ccff00;
 }
 
 /* File di pesan sendiri (kanan/hijau) */
+.chat-message.self .file-icon-wrapper {
+    background: rgba(0, 0, 0, 0.1);
+}
+
 .chat-message.self .file-icon {
     color: #000000;
 }
@@ -829,16 +860,13 @@ body::-webkit-scrollbar {
 .chat-message.self .file-btn.open-btn {
     background: #000000;
     color: #ccff00;
-    border-color: #000000;
 }
 
 .chat-message.self .file-btn.open-btn:hover {
     background: #1a1a1a;
-    color: #ccff00;
 }
 
 .chat-message.self .file-btn.download-btn {
-    background: transparent;
     color: #000000;
     border-color: rgba(0, 0, 0, 0.3);
 }
@@ -847,31 +875,6 @@ body::-webkit-scrollbar {
     background: rgba(0, 0, 0, 0.1);
     color: #000000;
     border-color: #000000;
-}
-
-/* File di pesan orang lain (kiri) */
-.chat-message.other .file-btn.open-btn {
-    background: #ccff00;
-    color: #000000;
-    border-color: #ccff00;
-}
-
-.chat-message.other .file-btn.open-btn:hover {
-    background: #d9ff33;
-    color: #000000;
-    border-color: #d9ff33;
-}
-
-.chat-message.other .file-btn.download-btn {
-    background: transparent;
-    color: #cccccc;
-    border-color: #2a2a2a;
-}
-
-.chat-message.other .file-btn.download-btn:hover {
-    background: #222222;
-    color: #ccff00;
-    border-color: #ccff00;
 }
 
 /* ==================== MESSAGE INPUT ==================== */
@@ -903,7 +906,7 @@ body::-webkit-scrollbar {
     flex: 1;
     padding: 12px 14px;
     border: 1.5px solid #2a2a2a;
-    border-radius: 10px;
+    border-radius: 25px;
     font-size: 14px;
     color: #ffffff;
     transition: all 0.3s ease;
@@ -924,12 +927,17 @@ body::-webkit-scrollbar {
     background: #ccff00;
     color: #000000;
     border: none;
-    border-radius: 10px;
-    padding: 12px 20px;
-    font-size: 14px;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }
 
 .message-input-area .send-btn:hover {
@@ -984,5 +992,19 @@ body::-webkit-scrollbar {
     .sender-photo {
         width: 11px;
         height: 11px;
+    }
+    
+    .file-message-content {
+        min-width: 160px;
+        max-width: 200px;
+    }
+    
+    .file-icon-wrapper {
+        width: 30px;
+        height: 30px;
+    }
+    
+    .file-icon {
+        font-size: 14px;
     }
 }
