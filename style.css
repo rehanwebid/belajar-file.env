@@ -852,3 +852,42 @@ body::-webkit-scrollbar {
         max-width: 85%;
     }
 }
+
+/* ==================== ADMIN PHOTO ==================== */
+.admin-photo {
+    width: 20px;
+    height: 20px;
+    object-fit: cover;
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 8px;
+}
+
+/* Foto admin di chat */
+.sender-photo {
+    width: 20px;
+    height: 20px;
+    object-fit: cover;
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 8px;
+}
+
+/* Foto admin di header */
+.header-admin-photo {
+    width: 24px;
+    height: 24px;
+    object-fit: cover;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+/* Foto admin di tabel user */
+.table-admin-photo {
+    width: 20px;
+    height: 20px;
+    object-fit: cover;
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 6px;
+}
