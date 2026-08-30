@@ -377,7 +377,7 @@ function sendMessage(view) {
     }
 }
 
-// ==================== LOAD MESSAGES (FIXED - File Minimalis) ====================
+// ==================== LOAD MESSAGES ====================
 function loadMessages(view) {
     const chatAreaId = view === 'Admin' ? 'chatAreaAdmin' : 'chatAreaUser';
     const chatArea = document.getElementById(chatAreaId);
@@ -439,7 +439,7 @@ function loadMessages(view) {
                         infoRow.appendChild(fileIcon);
                         infoRow.appendChild(fileName);
                         
-                        // Row 2: Tombol + jam sejajar
+                        // Row 2: Open + Download berdampingan + jam sejajar
                         const actionsRow = document.createElement('div');
                         actionsRow.className = 'file-actions-row';
                         
@@ -461,7 +461,7 @@ function loadMessages(view) {
                         buttonsGroup.appendChild(openBtn);
                         buttonsGroup.appendChild(downloadBtn);
                         
-                        // Jam file
+                        // Jam
                         const fileTime = document.createElement('span');
                         fileTime.className = 'file-time';
                         const date = new Date(msg.timestamp);
@@ -477,9 +477,9 @@ function loadMessages(view) {
                         
                         div.appendChild(fileContent);
                     } else {
+                        // Teks biasa + waktu
                         div.appendChild(document.createTextNode(msg.message));
                         
-                        // Waktu untuk pesan teks
                         const timeSpan = document.createElement('span');
                         timeSpan.className = 'chat-time';
                         const date = new Date(msg.timestamp);
