@@ -4,7 +4,6 @@ firebase.initializeApp(window.APP_CONFIG.firebase);
 // ==================== GLOBAL STATE ====================
 let currentUser = null;
 let currentRole = null;
-let lastMessageId = null;
 let onlineCount = 0;
 let onlinePingInterval = null;
 
@@ -275,10 +274,8 @@ function showAdminDashboard() {
 function startOnlinePing() {
     stopOnlinePing();
     
-    // Kirim ping pertama
     sendOnlinePing();
     
-    // Kirim ping setiap 5 detik
     onlinePingInterval = setInterval(function() {
         sendOnlinePing();
     }, 5000);
@@ -317,7 +314,6 @@ function logout() {
     
     currentUser = null;
     currentRole = null;
-    lastMessageId = null;
     
     firebase.auth().signOut().catch(function() {});
     
@@ -364,13 +360,15 @@ function sendMessage(view) {
     }
 }
 
+// ==================== LOAD MESSAGES (FIXED) ====================
 function loadMessages(view) {
     const chatAreaId = view === 'Admin' ? 'chatAreaAdmin' : 'chatAreaUser';
     const chatArea = document.getElementById(chatAreaId);
     
     if (!chatArea) return;
     
-    callAppsScript('getMessages', { lastId: lastMessageId || '' })
+    // PENTING: Ambil SEMUA pesan, jangan filter dengan lastId
+    callAppsScript('getMessages', {})
         .then(function(response) {
             if (response.success) {
                 chatArea.innerHTML = '';
@@ -378,14 +376,14 @@ function loadMessages(view) {
                 
                 for (let i = 0; i < messages.length; i++) {
                     const msg = messages[i];
-                    const isSelf = msg.senderUsername === currentUser.username;
+                    const isSelf = currentUser && msg.senderUsername === currentUser.username;
                     const div = document.createElement('div');
                     div.className = 'chat-message ' + (isSelf ? 'self' : 'other');
                     
                     if (!isSelf) {
                         const senderSpan = document.createElement('span');
                         senderSpan.className = 'sender-name';
-                        senderSpan.textContent = msg.senderName;
+                        senderSpan.textContent = msg.senderName || msg.senderUsername;
                         div.appendChild(senderSpan);
                     }
                     
@@ -403,10 +401,6 @@ function loadMessages(view) {
                 }
                 
                 chatArea.scrollTop = chatArea.scrollHeight;
-                
-                if (messages.length > 0) {
-                    lastMessageId = messages[messages.length - 1].messageId;
-                }
             }
         });
 }
