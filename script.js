@@ -133,8 +133,8 @@ function handleLogin() {
     if (username === window.APP_CONFIG.admin.username && password === window.APP_CONFIG.admin.password) {
         currentUser = { 
             userId: 'admin_001', 
-            username: username, 
-            nama: 'Administrator',
+            username: 'Admin', 
+            nama: 'Admin',
             role: 'admin'
         };
         currentRole = 'admin';
@@ -337,8 +337,17 @@ function sendMessage(view) {
     const message = input.value.trim();
     
     if (message) {
-        const senderName = currentUser.nama || currentUser.username;
-        const senderUsername = currentUser.username;
+        // Admin identitasnya "Admin", user biasa pakai nama/username
+        let senderName;
+        let senderUsername;
+        
+        if (view === 'Admin') {
+            senderName = 'Admin';
+            senderUsername = 'Admin';
+        } else {
+            senderName = currentUser.nama || currentUser.username;
+            senderUsername = currentUser.username;
+        }
         
         callAppsScript('sendMessage', {
             senderName: senderName,
@@ -360,14 +369,14 @@ function sendMessage(view) {
     }
 }
 
-// ==================== LOAD MESSAGES (FIXED) ====================
+// ==================== LOAD MESSAGES ====================
 function loadMessages(view) {
     const chatAreaId = view === 'Admin' ? 'chatAreaAdmin' : 'chatAreaUser';
     const chatArea = document.getElementById(chatAreaId);
     
     if (!chatArea) return;
     
-    // PENTING: Ambil SEMUA pesan, jangan filter dengan lastId
+    // Ambil SEMUA pesan tanpa filter
     callAppsScript('getMessages', {})
         .then(function(response) {
             if (response.success) {
@@ -422,8 +431,16 @@ function handleFileUpload(input, type, view) {
             })
             .then(function(response) {
                 if (response.success) {
-                    const senderName = currentUser.nama || currentUser.username;
-                    const senderUsername = currentUser.username;
+                    let senderName;
+                    let senderUsername;
+                    
+                    if (view === 'Admin') {
+                        senderName = 'Admin';
+                        senderUsername = 'Admin';
+                    } else {
+                        senderName = currentUser.nama || currentUser.username;
+                        senderUsername = currentUser.username;
+                    }
                     
                     callAppsScript('sendMessage', {
                         senderName: senderName,
