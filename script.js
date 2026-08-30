@@ -377,7 +377,7 @@ function sendMessage(view) {
     }
 }
 
-// ==================== LOAD MESSAGES (File Minimalis) ====================
+// ==================== LOAD MESSAGES (FIXED - File Minimalis) ====================
 function loadMessages(view) {
     const chatAreaId = view === 'Admin' ? 'chatAreaAdmin' : 'chatAreaUser';
     const chatArea = document.getElementById(chatAreaId);
@@ -425,12 +425,12 @@ function loadMessages(view) {
                         const fileContent = document.createElement('div');
                         fileContent.className = 'file-message-content';
                         
-                        // Row 1: Ikon + Nama file (1 baris)
+                        // Row 1: Ikon outline + nama file 1 baris
                         const infoRow = document.createElement('div');
                         infoRow.className = 'file-info-row';
                         
                         const fileIcon = document.createElement('i');
-                        fileIcon.className = 'fas fa-file file-icon';
+                        fileIcon.className = 'far fa-file file-icon';
                         
                         const fileName = document.createElement('span');
                         fileName.className = 'file-name';
@@ -439,9 +439,12 @@ function loadMessages(view) {
                         infoRow.appendChild(fileIcon);
                         infoRow.appendChild(fileName);
                         
-                        // Row 2: Tombol Open + Download
+                        // Row 2: Tombol + jam sejajar
                         const actionsRow = document.createElement('div');
                         actionsRow.className = 'file-actions-row';
+                        
+                        const buttonsGroup = document.createElement('div');
+                        buttonsGroup.className = 'file-buttons-group';
                         
                         const openBtn = document.createElement('a');
                         openBtn.href = msg.fileUrl;
@@ -455,8 +458,19 @@ function loadMessages(view) {
                         downloadBtn.className = 'file-btn download-btn';
                         downloadBtn.innerHTML = 'Download <i class="fas fa-download"></i>';
                         
-                        actionsRow.appendChild(openBtn);
-                        actionsRow.appendChild(downloadBtn);
+                        buttonsGroup.appendChild(openBtn);
+                        buttonsGroup.appendChild(downloadBtn);
+                        
+                        // Jam file
+                        const fileTime = document.createElement('span');
+                        fileTime.className = 'file-time';
+                        const date = new Date(msg.timestamp);
+                        const hours = String(date.getHours()).padStart(2, '0');
+                        const minutes = String(date.getMinutes()).padStart(2, '0');
+                        fileTime.textContent = hours + ':' + minutes;
+                        
+                        actionsRow.appendChild(buttonsGroup);
+                        actionsRow.appendChild(fileTime);
                         
                         fileContent.appendChild(infoRow);
                         fileContent.appendChild(actionsRow);
@@ -464,16 +478,16 @@ function loadMessages(view) {
                         div.appendChild(fileContent);
                     } else {
                         div.appendChild(document.createTextNode(msg.message));
+                        
+                        // Waktu untuk pesan teks
+                        const timeSpan = document.createElement('span');
+                        timeSpan.className = 'chat-time';
+                        const date = new Date(msg.timestamp);
+                        const hours = String(date.getHours()).padStart(2, '0');
+                        const minutes = String(date.getMinutes()).padStart(2, '0');
+                        timeSpan.textContent = hours + ':' + minutes;
+                        div.appendChild(timeSpan);
                     }
-                    
-                    // Waktu
-                    const timeSpan = document.createElement('span');
-                    timeSpan.className = 'chat-time';
-                    const date = new Date(msg.timestamp);
-                    const hours = String(date.getHours()).padStart(2, '0');
-                    const minutes = String(date.getMinutes()).padStart(2, '0');
-                    timeSpan.textContent = hours + ':' + minutes;
-                    div.appendChild(timeSpan);
                     
                     chatArea.appendChild(div);
                 }
