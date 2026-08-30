@@ -274,9 +274,7 @@ function showAdminDashboard() {
 // ==================== ONLINE PING SYSTEM ====================
 function startOnlinePing() {
     stopOnlinePing();
-    
     sendOnlinePing();
-    
     onlinePingInterval = setInterval(function() {
         sendOnlinePing();
     }, 5000);
@@ -379,7 +377,7 @@ function sendMessage(view) {
     }
 }
 
-// ==================== LOAD MESSAGES (FIXED - Foto Admin di Semua View) ====================
+// ==================== LOAD MESSAGES (Dengan File Support) ====================
 function loadMessages(view) {
     const chatAreaId = view === 'Admin' ? 'chatAreaAdmin' : 'chatAreaUser';
     const chatArea = document.getElementById(chatAreaId);
@@ -398,31 +396,80 @@ function loadMessages(view) {
                     const div = document.createElement('div');
                     div.className = 'chat-message ' + (isSelf ? 'self' : 'other');
                     
+                    // Nama pengirim
                     if (!isSelf) {
                         const senderSpan = document.createElement('span');
                         senderSpan.className = 'sender-name';
                         senderSpan.textContent = msg.senderName || msg.senderUsername;
                         
-                        // Jika sender adalah admin, tambahkan foto
+                        // Foto admin
                         if (msg.senderUsername === 'Admin' && window.APP_CONFIG.admin.photoUrl) {
                             const adminImg = document.createElement('img');
                             adminImg.src = window.APP_CONFIG.admin.photoUrl;
                             adminImg.className = 'sender-photo';
                             adminImg.alt = 'Admin';
-                            adminImg.style.width = '14px';
-                            adminImg.style.height = '14px';
+                            adminImg.style.width = '13px';
+                            adminImg.style.height = '13px';
                             adminImg.style.objectFit = 'cover';
                             adminImg.style.display = 'inline-block';
                             adminImg.style.verticalAlign = 'middle';
-                            adminImg.style.marginLeft = '6px';
+                            adminImg.style.marginLeft = '2px';
                             senderSpan.appendChild(adminImg);
                         }
                         
                         div.appendChild(senderSpan);
                     }
                     
-                    div.appendChild(document.createTextNode(msg.message));
+                    // Cek apakah file
+                    if (msg.type === 'document' && msg.fileUrl && msg.fileUrl !== '-') {
+                        const fileContent = document.createElement('div');
+                        fileContent.className = 'file-message-content';
+                        
+                        const fileInfo = document.createElement('div');
+                        fileInfo.className = 'file-info';
+                        
+                        const fileIcon = document.createElement('i');
+                        fileIcon.className = 'fas fa-file file-icon';
+                        
+                        const fileDetails = document.createElement('div');
+                        fileDetails.className = 'file-details';
+                        
+                        const fileName = document.createElement('span');
+                        fileName.className = 'file-name';
+                        fileName.textContent = msg.message.replace('📄 ', '');
+                        
+                        const fileActions = document.createElement('div');
+                        fileActions.className = 'file-actions';
+                        
+                        const openBtn = document.createElement('a');
+                        openBtn.href = msg.fileUrl;
+                        openBtn.target = '_blank';
+                        openBtn.className = 'file-btn open-btn';
+                        openBtn.textContent = 'Open';
+                        
+                        const downloadBtn = document.createElement('a');
+                        downloadBtn.href = msg.fileUrl;
+                        downloadBtn.download = msg.message.replace('📄 ', '');
+                        downloadBtn.className = 'file-btn download-btn';
+                        downloadBtn.textContent = 'Download';
+                        
+                        fileActions.appendChild(openBtn);
+                        fileActions.appendChild(downloadBtn);
+                        
+                        fileDetails.appendChild(fileName);
+                        fileDetails.appendChild(fileActions);
+                        
+                        fileInfo.appendChild(fileIcon);
+                        fileInfo.appendChild(fileDetails);
+                        
+                        fileContent.appendChild(fileInfo);
+                        
+                        div.appendChild(fileContent);
+                    } else {
+                        div.appendChild(document.createTextNode(msg.message));
+                    }
                     
+                    // Waktu
                     const timeSpan = document.createElement('span');
                     timeSpan.className = 'chat-time';
                     const date = new Date(msg.timestamp);
