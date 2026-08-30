@@ -733,17 +733,18 @@ body::-webkit-scrollbar {
     margin-bottom: 4px;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 3px;
 }
 
-/* Foto admin di chat */
+/* Foto admin di chat - lebih dekat ke teks */
 .sender-photo {
-    width: 14px;
-    height: 14px;
+    width: 13px;
+    height: 13px;
     object-fit: cover;
     display: inline-block;
     vertical-align: middle;
     flex-shrink: 0;
+    margin-left: 2px;
 }
 
 /* Waktu chat */
@@ -867,7 +868,7 @@ body::-webkit-scrollbar {
     }
     
     .sender-photo {
-        width: 12px;
-        height: 12px;
+        width: 11px;
+        height: 11px;
     }
 }
