@@ -792,18 +792,18 @@ body::-webkit-scrollbar {
     color: #cccccc;
 }
 
-/* Row 2: Tombol + jam sejajar */
+/* Row 2: Tombol Open + Download berdampingan + jam sejajar */
 .file-actions-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 8px;
 }
 
 .file-buttons-group {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 6px;
+    flex-shrink: 0;
 }
 
 .file-btn {
@@ -846,11 +846,12 @@ body::-webkit-scrollbar {
     font-size: 10px;
 }
 
-/* Jam file sejajar dengan tombol */
+/* Jam file - sejajar horizontal dengan tombol */
 .file-time {
     font-size: 10px;
     color: #666666;
     flex-shrink: 0;
+    margin-left: auto;
 }
 
 /* File di pesan sendiri (kanan/hijau) */
