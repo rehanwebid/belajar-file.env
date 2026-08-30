@@ -133,8 +133,8 @@ function handleLogin() {
     if (username === window.APP_CONFIG.admin.username && password === window.APP_CONFIG.admin.password) {
         currentUser = { 
             userId: 'admin_001', 
-            username: 'Admin group', 
-            nama: 'Admin group',
+            username: 'Admin', 
+            nama: window.APP_CONFIG.admin.displayName || 'Admin group',
             role: 'admin',
             photoUrl: window.APP_CONFIG.admin.photoUrl
         };
@@ -379,7 +379,7 @@ function sendMessage(view) {
     }
 }
 
-// ==================== LOAD MESSAGES ====================
+// ==================== LOAD MESSAGES (FIXED - Foto Admin di Semua View) ====================
 function loadMessages(view) {
     const chatAreaId = view === 'Admin' ? 'chatAreaAdmin' : 'chatAreaUser';
     const chatArea = document.getElementById(chatAreaId);
@@ -409,6 +409,12 @@ function loadMessages(view) {
                             adminImg.src = window.APP_CONFIG.admin.photoUrl;
                             adminImg.className = 'sender-photo';
                             adminImg.alt = 'Admin';
+                            adminImg.style.width = '14px';
+                            adminImg.style.height = '14px';
+                            adminImg.style.objectFit = 'cover';
+                            adminImg.style.display = 'inline-block';
+                            adminImg.style.verticalAlign = 'middle';
+                            adminImg.style.marginLeft = '6px';
                             senderSpan.appendChild(adminImg);
                         }
                         
