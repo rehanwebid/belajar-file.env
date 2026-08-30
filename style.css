@@ -736,7 +736,7 @@ body::-webkit-scrollbar {
     gap: 3px;
 }
 
-/* Foto admin di chat - lebih dekat ke teks */
+/* Foto admin di chat */
 .sender-photo {
     width: 13px;
     height: 13px;
@@ -758,6 +758,120 @@ body::-webkit-scrollbar {
 
 .chat-message.self .chat-time {
     color: #444444;
+}
+
+/* ==================== FILE MESSAGE STYLES ==================== */
+.file-message-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.file-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.file-icon {
+    font-size: 24px;
+    color: #ccff00;
+}
+
+.file-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.file-name {
+    font-size: 13px;
+    font-weight: 600;
+    word-break: break-all;
+    display: block;
+    margin-bottom: 6px;
+}
+
+.file-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.file-btn {
+    padding: 6px 12px;
+    border: 1px solid #2a2a2a;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+    background: #1a1a1a;
+    color: #cccccc;
+}
+
+.file-btn:hover {
+    background: #222222;
+    border-color: #ccff00;
+    color: #ccff00;
+}
+
+/* File di pesan sendiri (kanan/hijau) */
+.chat-message.self .file-icon {
+    color: #000000;
+}
+
+.chat-message.self .file-name {
+    color: #000000;
+}
+
+.chat-message.self .file-btn.open-btn {
+    background: #000000;
+    color: #ccff00;
+    border-color: #000000;
+}
+
+.chat-message.self .file-btn.open-btn:hover {
+    background: #1a1a1a;
+    color: #ccff00;
+}
+
+.chat-message.self .file-btn.download-btn {
+    background: transparent;
+    color: #000000;
+    border-color: rgba(0, 0, 0, 0.3);
+}
+
+.chat-message.self .file-btn.download-btn:hover {
+    background: rgba(0, 0, 0, 0.1);
+    color: #000000;
+    border-color: #000000;
+}
+
+/* File di pesan orang lain (kiri) */
+.chat-message.other .file-btn.open-btn {
+    background: #ccff00;
+    color: #000000;
+    border-color: #ccff00;
+}
+
+.chat-message.other .file-btn.open-btn:hover {
+    background: #d9ff33;
+    color: #000000;
+    border-color: #d9ff33;
+}
+
+.chat-message.other .file-btn.download-btn {
+    background: transparent;
+    color: #cccccc;
+    border-color: #2a2a2a;
+}
+
+.chat-message.other .file-btn.download-btn:hover {
+    background: #222222;
+    color: #ccff00;
+    border-color: #ccff00;
 }
 
 /* ==================== MESSAGE INPUT ==================== */
