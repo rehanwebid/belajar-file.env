@@ -377,7 +377,7 @@ function sendMessage(view) {
     }
 }
 
-// ==================== LOAD MESSAGES (Dengan File Support) ====================
+// ==================== LOAD MESSAGES (File Minimalis) ====================
 function loadMessages(view) {
     const chatAreaId = view === 'Admin' ? 'chatAreaAdmin' : 'chatAreaUser';
     const chatArea = document.getElementById(chatAreaId);
@@ -425,21 +425,23 @@ function loadMessages(view) {
                         const fileContent = document.createElement('div');
                         fileContent.className = 'file-message-content';
                         
-                        const fileInfo = document.createElement('div');
-                        fileInfo.className = 'file-info';
+                        // Row 1: Ikon + Nama file (1 baris)
+                        const infoRow = document.createElement('div');
+                        infoRow.className = 'file-info-row';
                         
                         const fileIcon = document.createElement('i');
                         fileIcon.className = 'fas fa-file file-icon';
-                        
-                        const fileDetails = document.createElement('div');
-                        fileDetails.className = 'file-details';
                         
                         const fileName = document.createElement('span');
                         fileName.className = 'file-name';
                         fileName.textContent = msg.message.replace('📄 ', '');
                         
-                        const fileActions = document.createElement('div');
-                        fileActions.className = 'file-actions';
+                        infoRow.appendChild(fileIcon);
+                        infoRow.appendChild(fileName);
+                        
+                        // Row 2: Tombol Open + Download
+                        const actionsRow = document.createElement('div');
+                        actionsRow.className = 'file-actions-row';
                         
                         const openBtn = document.createElement('a');
                         openBtn.href = msg.fileUrl;
@@ -451,18 +453,13 @@ function loadMessages(view) {
                         downloadBtn.href = msg.fileUrl;
                         downloadBtn.download = msg.message.replace('📄 ', '');
                         downloadBtn.className = 'file-btn download-btn';
-                        downloadBtn.textContent = 'Download';
+                        downloadBtn.innerHTML = 'Download <i class="fas fa-download"></i>';
                         
-                        fileActions.appendChild(openBtn);
-                        fileActions.appendChild(downloadBtn);
+                        actionsRow.appendChild(openBtn);
+                        actionsRow.appendChild(downloadBtn);
                         
-                        fileDetails.appendChild(fileName);
-                        fileDetails.appendChild(fileActions);
-                        
-                        fileInfo.appendChild(fileIcon);
-                        fileInfo.appendChild(fileDetails);
-                        
-                        fileContent.appendChild(fileInfo);
+                        fileContent.appendChild(infoRow);
+                        fileContent.appendChild(actionsRow);
                         
                         div.appendChild(fileContent);
                     } else {
