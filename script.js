@@ -133,9 +133,10 @@ function handleLogin() {
     if (username === window.APP_CONFIG.admin.username && password === window.APP_CONFIG.admin.password) {
         currentUser = { 
             userId: 'admin_001', 
-            username: 'Admin', 
-            nama: 'Admin',
-            role: 'admin'
+            username: 'Admin group', 
+            nama: 'Admin group',
+            role: 'admin',
+            photoUrl: window.APP_CONFIG.admin.photoUrl
         };
         currentRole = 'admin';
         showAdminDashboard();
@@ -327,6 +328,15 @@ function logout() {
     checkLoginForm();
 }
 
+// ==================== HELPER: ADMIN IDENTITY ====================
+function getAdminIdentity() {
+    return {
+        senderName: window.APP_CONFIG.admin.displayName || 'Admin group',
+        senderUsername: 'Admin',
+        photoUrl: window.APP_CONFIG.admin.photoUrl || ''
+    };
+}
+
 // ==================== CHAT ====================
 function sendMessage(view) {
     const inputId = view === 'Admin' ? 'messageInputAdmin' : 'messageInputUser';
@@ -337,13 +347,13 @@ function sendMessage(view) {
     const message = input.value.trim();
     
     if (message) {
-        // Admin identitasnya "Admin", user biasa pakai nama/username
         let senderName;
         let senderUsername;
         
         if (view === 'Admin') {
-            senderName = 'Admin';
-            senderUsername = 'Admin';
+            const adminIdentity = getAdminIdentity();
+            senderName = adminIdentity.senderName;
+            senderUsername = adminIdentity.senderUsername;
         } else {
             senderName = currentUser.nama || currentUser.username;
             senderUsername = currentUser.username;
@@ -376,7 +386,6 @@ function loadMessages(view) {
     
     if (!chatArea) return;
     
-    // Ambil SEMUA pesan tanpa filter
     callAppsScript('getMessages', {})
         .then(function(response) {
             if (response.success) {
@@ -393,6 +402,16 @@ function loadMessages(view) {
                         const senderSpan = document.createElement('span');
                         senderSpan.className = 'sender-name';
                         senderSpan.textContent = msg.senderName || msg.senderUsername;
+                        
+                        // Jika sender adalah admin, tambahkan foto
+                        if (msg.senderUsername === 'Admin' && window.APP_CONFIG.admin.photoUrl) {
+                            const adminImg = document.createElement('img');
+                            adminImg.src = window.APP_CONFIG.admin.photoUrl;
+                            adminImg.className = 'sender-photo';
+                            adminImg.alt = 'Admin';
+                            senderSpan.appendChild(adminImg);
+                        }
+                        
                         div.appendChild(senderSpan);
                     }
                     
@@ -435,8 +454,9 @@ function handleFileUpload(input, type, view) {
                     let senderUsername;
                     
                     if (view === 'Admin') {
-                        senderName = 'Admin';
-                        senderUsername = 'Admin';
+                        const adminIdentity = getAdminIdentity();
+                        senderName = adminIdentity.senderName;
+                        senderUsername = adminIdentity.senderUsername;
                     } else {
                         senderName = currentUser.nama || currentUser.username;
                         senderUsername = currentUser.username;
